@@ -248,6 +248,19 @@ function shuffle(a){const b=[...a];for(let i=b.length-1;i>0;i--){const j=Math.fl
 function makeCard(){const p=shuffle(PHRASES).slice(0,24);p.splice(12,0,'__FREE__');return p}
 function genCode(){const c='ABCDEFGHJKLMNPQRSTUVWXYZ23456789';let r='';for(let i=0;i<4;i++)r+=c[Math.floor(Math.random()*c.length)];return r}
 
+// ICE servers with TURN relay for NAT traversal
+const ICE_SERVERS = {
+  iceServers: [
+    { urls: "stun:stun.l.google.com:19302" },
+    { urls: "stun:stun.relay.metered.ca:80" },
+    { urls: "turn:global.relay.metered.ca:80", username: "e8dd65b92f6932a39e3055c1", credential: "uTH/Kpe/BFPTGXLQ" },
+    { urls: "turn:global.relay.metered.ca:80?transport=tcp", username: "e8dd65b92f6932a39e3055c1", credential: "uTH/Kpe/BFPTGXLQ" },
+    { urls: "turn:global.relay.metered.ca:443", username: "e8dd65b92f6932a39e3055c1", credential: "uTH/Kpe/BFPTGXLQ" },
+    { urls: "turns:global.relay.metered.ca:443?transport=tcp", username: "e8dd65b92f6932a39e3055c1", credential: "uTH/Kpe/BFPTGXLQ" }
+  ],
+  sdpSemantics: 'unified-plan'
+};
+
 function checkBingo(marked){
   const g=Array(25).fill(false);marked.forEach(i=>g[i]=true);g[12]=true;
   for(let r=0;r<5;r++)if([0,1,2,3,4].every(c=>g[r*5+c]))return true;
@@ -301,7 +314,7 @@ function createRoom(){
   roomCode=genCode();
   isHost=true;
 
-  peer=new Peer('opl-'+roomCode,{debug:0});
+  peer=new Peer('opl-'+roomCode,{debug:0,config:ICE_SERVERS});
   peer.on('open',id=>{
     myId=id;
     myCard=makeCard();
@@ -319,6 +332,7 @@ function createRoom(){
       createRoom();
     } else {
       toast('Connection error: '+err.type,'error');
+      console.error('Host peer error:',err);
     }
   });
   peer.on('connection',conn=>{
@@ -326,6 +340,7 @@ function createRoom(){
       conn.on('data',data=>hostHandleMessage(conn,data));
     });
     conn.on('close',()=>hostPlayerLeft(conn));
+    conn.on('error',err=>{console.error('Host conn error:',err);toast('Player connection error','error')});
   });
 }
 
@@ -483,7 +498,7 @@ function joinRoom(){
   roomCode=code;
   isHost=false;
 
-  peer=new Peer(undefined,{debug:0});
+  peer=new Peer(undefined,{debug:0,config:ICE_SERVERS});
   peer.on('open',id=>{
     myId=id;
     showScreen('waiting');
@@ -491,20 +506,37 @@ function joinRoom(){
     document.getElementById('connectMsg').textContent='Connecting to host...';
     const conn=peer.connect('opl-'+roomCode,{reliable:true});
     hostConn=conn;
+    let connected=false;
     conn.on('open',()=>{
+      connected=true;
       conn.send({type:'join',name:myName,emoji:myEmoji});
       document.getElementById('connectMsg').textContent='Connected! Waiting for host to start...';
     });
     conn.on('data',data=>playerHandleMessage(data));
-    conn.on('close',()=>{toast('Disconnected from host','error');showScreen('lobby')});
-    conn.on('error',err=>toast('Connection error','error'));
+    conn.on('close',()=>{
+      if(connected){toast('Disconnected from host','error');showScreen('lobby')}
+    });
+    conn.on('error',err=>{
+      console.error('Player conn error:',err);
+      toast('Connection error — try again','error');
+    });
+    // Timeout if connection doesn't open
+    setTimeout(()=>{
+      if(!connected){
+        toast('Could not reach host — make sure they have the game open','error');
+        showScreen('lobby');
+        try{peer.destroy()}catch(e){}
+      }
+    },15000);
   });
   peer.on('error',err=>{
+    console.error('Player peer error:',err);
     if(err.type==='peer-unavailable'){
-      toast('Room not found! Check your code.','error');
+      toast('Room not found! Make sure the host has the game open.','error');
       showScreen('lobby');
     } else {
-      toast('Connection error: '+err.type,'error');
+      toast('Connection error: '+err.type+'. Try again.','error');
+      showScreen('lobby');
     }
   });
 }
