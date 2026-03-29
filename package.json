@@ -1,0 +1,12 @@
+{
+  "name": "opl-bingo-live",
+  "version": "1.0.0",
+  "description": "On Patrol: Live - Multiplayer Bingo Game",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "ws": "^8.16.0"
+  }
+}
