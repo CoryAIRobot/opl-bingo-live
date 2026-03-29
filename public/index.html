@@ -333,13 +333,39 @@ function getWsUrl() {
   return `${proto}//${location.host}/ws`;
 }
 
+function saveSession(roomCode, pid, name, emoji) {
+  try {
+    localStorage.setItem('opl_session', JSON.stringify({ roomCode, playerId: pid, name, emoji, ts: Date.now() }));
+  } catch(e) {}
+}
+
+function loadSession() {
+  try {
+    const s = JSON.parse(localStorage.getItem('opl_session'));
+    if (s && Date.now() - s.ts < 12 * 60 * 60 * 1000) return s; // valid for 12h
+  } catch(e) {}
+  return null;
+}
+
+function clearSession() {
+  try { localStorage.removeItem('opl_session'); } catch(e) {}
+}
+
 function connect() {
   if (ws && (ws.readyState === WebSocket.OPEN || ws.readyState === WebSocket.CONNECTING)) return;
   ws = new WebSocket(getWsUrl());
   ws.onopen = () => {
     console.log('WS connected');
     updateStatusDot('connected');
-    // If we had a pending action (create/join), send it now
+    // Try to rejoin existing session
+    const saved = loadSession();
+    if (saved && !pendingAction) {
+      console.log('Attempting rejoin:', saved.roomCode, saved.playerId);
+      ws.send(JSON.stringify({ type: 'rejoin', playerId: saved.playerId, roomCode: saved.roomCode }));
+      showScreen('waiting');
+      document.getElementById('connectMsg').innerHTML = '<span class="status-dot connecting"></span>Reconnecting...';
+      return;
+    }
     if (pendingAction) {
       send(pendingAction);
       pendingAction = null;
@@ -388,17 +414,21 @@ document.getElementById('emojiPick').addEventListener('click', e => {
 
 // ── Actions ──
 function createRoom() {
+  clearSession();
   const name = document.getElementById('playerName').value.trim() || 'Player';
-  send({ type: 'create', name, emoji: selectedEmoji });
+  const pid = state.playerId || crypto.randomUUID();
+  send({ type: 'create', name, emoji: selectedEmoji, playerId: pid });
   showScreen('waiting');
   document.getElementById('connectMsg').innerHTML = '<span class="status-dot connecting"></span>Creating room...';
 }
 
 function joinRoom() {
+  clearSession();
   const name = document.getElementById('playerName').value.trim() || 'Player';
   const code = document.getElementById('joinCode').value.trim().toUpperCase();
   if (!code) { toast('Enter a room code!', 'error'); return; }
-  send({ type: 'join', name, emoji: selectedEmoji, code });
+  const pid = state.playerId || crypto.randomUUID();
+  send({ type: 'join', name, emoji: selectedEmoji, code, playerId: pid });
   showScreen('waiting');
   document.getElementById('waitRoomCode').textContent = code;
   document.getElementById('connectMsg').innerHTML = '<span class="status-dot connecting"></span>Joining room...';
@@ -529,12 +559,32 @@ document.getElementById('waitChatInput').addEventListener('keydown', e => {
 function handleMessage(msg) {
   switch (msg.type) {
     case 'welcome':
+      state.playerId = msg.playerId;
       console.log('Server assigned ID:', msg.playerId);
+      break;
+
+    case 'rejoinFailed':
+      console.log('Rejoin failed:', msg.message);
+      clearSession();
+      showScreen('lobby');
+      break;
+
+    case 'playerRejoined':
+      toast(`${msg.emoji} ${msg.name} reconnected`, 'info');
+      addSystemChat(`${msg.emoji} ${msg.name} reconnected`);
+      if (msg.scoreboard) { renderWaitingPlayers(msg.scoreboard); renderScoreboard(msg.scoreboard); }
+      break;
+
+    case 'playerDisconnected':
+      toast(`${msg.name} disconnected`, 'info');
+      addSystemChat(`${msg.name} disconnected`);
+      if (msg.scoreboard) { renderWaitingPlayers(msg.scoreboard); renderScoreboard(msg.scoreboard); }
       break;
 
     case 'state':
       state = msg;
       myMarkedIndices = new Set(msg.markedIndices || []);
+      saveSession(msg.roomCode, msg.playerId, msg.playerName, '');
       if (msg.allCards) allCards = msg.allCards;
       if (msg.gameStarted) {
         showScreen('game');

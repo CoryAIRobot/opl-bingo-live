@@ -72,10 +72,10 @@ function checkBingo(marked) {
   return false;
 }
 
-function broadcast(room, msg) {
+function broadcast(room, msg, excludeId) {
   const data = JSON.stringify(msg);
-  for (const p of room.players.values()) {
-    if (p.ws && p.ws.readyState === 1) p.ws.send(data);
+  for (const [id, p] of room.players) {
+    if (id !== excludeId && p.ws && p.ws.readyState === 1) p.ws.send(data);
   }
 }
 
@@ -151,22 +151,19 @@ wss.on('connection', (ws) => {
   let playerId = crypto.randomUUID();
   let currentRoom = null;
 
-  // Send welcome with player ID
-  ws.send(JSON.stringify({ type: 'welcome', playerId }));
-
   ws.on('message', (raw) => {
     let msg;
     try { msg = JSON.parse(raw); } catch { return; }
 
     switch (msg.type) {
       case 'create': {
+        // Allow reconnect with existing playerId
+        if (msg.playerId) playerId = msg.playerId;
         let code = genCode();
         while (rooms.has(code)) code = genCode();
         const room = {
           code, hostId: playerId,
           players: new Map(),
-          calledPhrases: new Set(),
-          calledBy: new Map(),
           gameStarted: false, winners: [],
           createdAt: Date.now()
         };
@@ -174,22 +171,53 @@ wss.on('connection', (ws) => {
         room.players.set(playerId, { ws, name: msg.name || 'Host', emoji: msg.emoji || '🚔', card, hasBingo: false, markedIndices: new Set() });
         rooms.set(code, room);
         currentRoom = room;
+        ws.send(JSON.stringify({ type: 'welcome', playerId }));
         ws.send(JSON.stringify(getRoomState(room, playerId)));
         console.log(`Room ${code} created by ${msg.name}`);
         break;
       }
 
       case 'join': {
+        if (msg.playerId) playerId = msg.playerId;
         const code = (msg.code || '').toUpperCase();
         const room = rooms.get(code);
         if (!room) { ws.send(JSON.stringify({ type: 'error', message: 'Room not found! Check your code.' })); return; }
-        if (room.players.size >= 20) { ws.send(JSON.stringify({ type: 'error', message: 'Room is full (max 20).' })); return; }
+        if (room.players.size >= 20 && !room.players.has(playerId)) { ws.send(JSON.stringify({ type: 'error', message: 'Room is full (max 20).' })); return; }
         const card = makeCard();
         room.players.set(playerId, { ws, name: msg.name || 'Player', emoji: msg.emoji || '🎲', card, hasBingo: false, markedIndices: new Set() });
         currentRoom = room;
         broadcast(room, { type: 'playerJoined', name: msg.name, emoji: msg.emoji || '🎲', scoreboard: getScoreboard(room) });
+        ws.send(JSON.stringify({ type: 'welcome', playerId }));
         ws.send(JSON.stringify(getRoomState(room, playerId)));
         console.log(`${msg.name} joined room ${code}`);
+        break;
+      }
+
+      case 'rejoin': {
+        // Reconnect to existing game
+        if (!msg.playerId || !msg.roomCode) {
+          ws.send(JSON.stringify({ type: 'error', message: 'No session to rejoin.' }));
+          return;
+        }
+        playerId = msg.playerId;
+        const code = (msg.roomCode || '').toUpperCase();
+        const room = rooms.get(code);
+        if (!room) {
+          ws.send(JSON.stringify({ type: 'rejoinFailed', message: 'Room no longer exists.' }));
+          return;
+        }
+        const existing = room.players.get(playerId);
+        if (!existing) {
+          ws.send(JSON.stringify({ type: 'rejoinFailed', message: 'Player not found in room.' }));
+          return;
+        }
+        // Restore the websocket connection
+        existing.ws = ws;
+        currentRoom = room;
+        ws.send(JSON.stringify({ type: 'welcome', playerId }));
+        ws.send(JSON.stringify(getRoomState(room, playerId)));
+        broadcast(room, { type: 'playerRejoined', name: existing.name, emoji: existing.emoji, scoreboard: getScoreboard(room) });
+        console.log(`${existing.name} rejoined room ${code}`);
         break;
       }
 
@@ -285,31 +313,39 @@ wss.on('connection', (ws) => {
   ws.on('close', () => {
     if (currentRoom) {
       const player = currentRoom.players.get(playerId);
-      currentRoom.players.delete(playerId);
-      if (currentRoom.players.size === 0) {
-        rooms.delete(currentRoom.code);
-        console.log(`Room ${currentRoom.code} deleted (empty)`);
-      } else {
-        broadcast(currentRoom, { type: 'playerLeft', name: player?.name || '???', scoreboard: getScoreboard(currentRoom) });
-        if (currentRoom.hostId === playerId) {
-          currentRoom.hostId = currentRoom.players.keys().next().value;
-          const newHost = currentRoom.players.get(currentRoom.hostId);
-          broadcast(currentRoom, { type: 'newHost', name: newHost?.name || 'Someone', hostId: currentRoom.hostId });
-        }
+      if (player) {
+        player.ws = null; // Mark disconnected but keep the player
+        player.disconnectedAt = Date.now();
+        broadcast(currentRoom, { type: 'playerDisconnected', name: player.name, emoji: player.emoji, scoreboard: getScoreboard(currentRoom) });
+        console.log(`${player.name} disconnected from room ${currentRoom.code} (kept for rejoin)`);
       }
     }
   });
 });
 
-// Cleanup stale rooms every 30 min
+// Cleanup every 2 min: remove disconnected players after 5 min, delete empty rooms
 setInterval(() => {
   const now = Date.now();
   for (const [code, room] of rooms) {
+    // Remove players disconnected > 5 min
+    for (const [pid, p] of room.players) {
+      if (!p.ws && p.disconnectedAt && now - p.disconnectedAt > 5 * 60 * 1000) {
+        room.players.delete(pid);
+        broadcast(room, { type: 'playerLeft', name: p.name, scoreboard: getScoreboard(room) });
+        // Transfer host if needed
+        if (room.hostId === pid && room.players.size > 0) {
+          room.hostId = room.players.keys().next().value;
+          const newHost = room.players.get(room.hostId);
+          broadcast(room, { type: 'newHost', name: newHost?.name || 'Someone', hostId: room.hostId });
+        }
+      }
+    }
+    // Delete empty or stale rooms
     if (room.players.size === 0 || now - room.createdAt > 12 * 60 * 60 * 1000) {
       rooms.delete(code);
     }
   }
-}, 30 * 60 * 1000);
+}, 2 * 60 * 1000);
 
 server.listen(PORT, () => {
   console.log(`🚔 OPL Bingo Live running on port ${PORT}`);
