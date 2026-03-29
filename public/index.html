@@ -91,12 +91,37 @@ input[type=text]::placeholder{color:#555}
   border-left:2px solid #333;z-index:190;transition:right .3s ease;padding:60px 16px 20px;overflow-y:auto}
 .scoreboard-panel.open{right:0}
 .scoreboard-panel h3{font-family:'Oswald',sans-serif;font-size:1.2rem;letter-spacing:2px;color:var(--gold);text-transform:uppercase;margin-bottom:16px}
-.sb-row{display:flex;align-items:center;gap:10px;padding:10px;border-radius:10px;margin-bottom:6px;background:var(--navy-light)}
+.sb-row{display:flex;align-items:center;gap:10px;padding:10px;border-radius:10px;margin-bottom:6px;background:var(--navy-light);cursor:pointer;transition:background .15s}
+.sb-row:active{background:var(--blue)}
 .sb-row .rank{font-family:'Oswald',sans-serif;font-size:1rem;color:#555;width:24px}
 .sb-row .name{flex:1;font-weight:600}
+.sb-row .peek{font-size:0.7rem;color:#666;text-transform:uppercase;letter-spacing:1px}
 .sb-row .count{font-family:'Oswald',sans-serif;font-size:1.1rem;color:var(--green)}
 .sb-row.winner{border:1px solid var(--gold);background:rgba(255,215,0,0.05)}
 .sb-row.winner .name::after{content:' 🏆'}
+
+/* Card Viewer Modal */
+.card-viewer-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.85);z-index:260;
+  display:none;align-items:center;justify-content:center;flex-direction:column;padding:16px}
+.card-viewer-overlay.active{display:flex}
+.card-viewer{width:100%;max-width:420px;background:var(--navy-light);border-radius:16px;overflow:hidden;border:2px solid var(--red)}
+.card-viewer-header{display:flex;align-items:center;justify-content:space-between;padding:14px 18px;background:var(--navy);border-bottom:2px solid var(--red)}
+.card-viewer-header .viewer-name{font-family:'Oswald',sans-serif;font-size:1.2rem;color:var(--red-light);letter-spacing:2px}
+.card-viewer-header .viewer-close{width:36px;height:36px;border-radius:8px;background:rgba(255,255,255,0.1);
+  color:#fff;font-size:1.2rem;display:flex;align-items:center;justify-content:center;transition:background .15s}
+.card-viewer-header .viewer-close:active{background:rgba(255,255,255,0.2)}
+.card-viewer .bingo-letters{display:grid;grid-template-columns:repeat(5,minmax(0,1fr))}
+.card-viewer .bingo-letters span{font-family:'Oswald',sans-serif;font-size:1.1rem;font-weight:700;text-align:center;padding:6px 0;background:var(--red);color:#fff}
+.card-viewer .viewer-grid{display:grid;grid-template-columns:repeat(5,minmax(0,1fr))}
+.card-viewer .vcell{aspect-ratio:1;display:flex;align-items:center;justify-content:center;text-align:center;
+  padding:3px;font-size:0.52rem;font-weight:700;line-height:1.1;text-transform:uppercase;
+  color:#999;background:var(--blue);border:1px solid rgba(255,255,255,0.06);word-break:break-word;overflow:hidden;min-width:0;position:relative}
+.card-viewer .vcell.called{background:#1a5c1a;color:#fff}
+.card-viewer .vcell.called::after{content:'✓';position:absolute;top:1px;right:2px;font-size:0.55rem;color:var(--green)}
+.card-viewer .vcell.free{background:var(--navy);flex-direction:column;gap:1px}
+.card-viewer .vcell.free .badge{background:var(--red);color:#fff;padding:1px 6px;border-radius:3px;font-family:'Oswald',sans-serif;font-size:0.55rem;letter-spacing:1px}
+.card-viewer .vcell.free .icon{font-size:0.8rem}
+.card-viewer-footer{padding:8px;text-align:center;font-size:0.7rem;color:#555;text-transform:uppercase;letter-spacing:1px}
 .called-log{width:100%;max-width:500px;margin-top:8px}
 .called-log summary{font-size:0.8rem;color:#888;cursor:pointer;text-transform:uppercase;letter-spacing:1px}
 .called-log .log-list{display:flex;flex-wrap:wrap;gap:4px;padding:8px 0}
@@ -203,6 +228,19 @@ input[type=text]::placeholder{color:#555}
   </div>
 </div>
 
+<!-- Card Viewer -->
+<div class="card-viewer-overlay" id="cardViewerOverlay" onclick="if(event.target===this)closeCardViewer()">
+  <div class="card-viewer">
+    <div class="card-viewer-header">
+      <span class="viewer-name" id="viewerName">🚔 Player</span>
+      <button class="viewer-close" onclick="closeCardViewer()">✕</button>
+    </div>
+    <div class="bingo-letters"><span>B</span><span>I</span><span>N</span><span>G</span><span>O</span></div>
+    <div class="viewer-grid" id="viewerGrid"></div>
+    <div class="card-viewer-footer">Live view — updates in real-time</div>
+  </div>
+</div>
+
 <!-- Winner -->
 <div class="winner-overlay" id="winnerOverlay">
   <div class="trophy">🏆</div>
@@ -220,7 +258,9 @@ let ws;
 let state = {};
 let selectedEmoji = '🚔';
 let reconnectTimer;
-let pendingAction = null; // {type, data} to send after connect
+let pendingAction = null;
+let allCards = {}; // playerId -> {name, emoji, card}
+let viewingPlayerId = null; // currently viewing this player's card
 
 function getWsUrl() {
   const proto = location.protocol === 'https:' ? 'wss:' : 'ws:';
@@ -322,11 +362,13 @@ function handleMessage(msg) {
 
     case 'state':
       state = msg;
+      if (msg.allCards) allCards = msg.allCards;
       if (msg.gameStarted) {
         showScreen('game');
         renderBoard();
         renderScoreboard(msg.scoreboard);
         updateCalledLog();
+        refreshCardViewer();
         document.getElementById('gameRoomInfo').textContent = `🚨 ${msg.roomCode}`;
         if (msg.isHost) document.getElementById('hostControls').style.display = 'flex';
       } else {
@@ -357,9 +399,11 @@ function handleMessage(msg) {
     case 'phraseCalled':
       state.calledPhrases = msg.calledPhrases;
       state.calledBy = msg.calledByMap;
+      if (msg.allCards) allCards = msg.allCards;
       renderBoard(msg.phrase);
       renderScoreboard(msg.scoreboard);
       updateCalledLog();
+      refreshCardViewer();
       toast(`"${msg.phrase}" — ${msg.calledBy}`, 'info');
       if (navigator.vibrate) navigator.vibrate(50);
       break;
@@ -424,10 +468,40 @@ function callPhrase(index) {
 function renderScoreboard(sb) {
   if (!sb) return;
   document.getElementById('scoreList').innerHTML = sb.map((p, i) => `
-    <div class="sb-row${p.hasBingo ? ' winner' : ''}">
+    <div class="sb-row${p.hasBingo ? ' winner' : ''}" onclick="viewCard('${p.id}')">
       <span class="rank">#${i + 1}</span><span>${p.emoji}</span>
-      <span class="name">${p.name}</span><span class="count">${p.marked}/25</span>
+      <span class="name">${p.name}</span><span class="peek">👁 peek</span><span class="count">${p.marked}/25</span>
     </div>`).join('');
+}
+
+function viewCard(playerId) {
+  const pdata = allCards[playerId];
+  if (!pdata || !pdata.card) { toast('Card not available yet', 'info'); return; }
+  viewingPlayerId = playerId;
+  document.getElementById('viewerName').textContent = `${pdata.emoji} ${pdata.name}'s Card`;
+  renderViewerGrid(pdata.card);
+  document.getElementById('cardViewerOverlay').classList.add('active');
+}
+
+function closeCardViewer() {
+  viewingPlayerId = null;
+  document.getElementById('cardViewerOverlay').classList.remove('active');
+}
+
+function refreshCardViewer() {
+  if (!viewingPlayerId) return;
+  const pdata = allCards[viewingPlayerId];
+  if (!pdata) { closeCardViewer(); return; }
+  renderViewerGrid(pdata.card);
+}
+
+function renderViewerGrid(card) {
+  const calledSet = new Set((state.calledPhrases || []).map(p => p.toUpperCase()));
+  document.getElementById('viewerGrid').innerHTML = card.map((phrase, i) => {
+    if (phrase === '__FREE__') return `<div class="vcell free"><span class="icon">🚔</span><span class="badge">FREE</span></div>`;
+    const isCalled = calledSet.has(phrase.toUpperCase());
+    return `<div class="vcell${isCalled ? ' called' : ''}">${phrase}</div>`;
+  }).join('');
 }
 
 function updateCalledLog() {

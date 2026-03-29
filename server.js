@@ -89,6 +89,14 @@ function getScoreboard(room) {
   return board;
 }
 
+function getAllCards(room) {
+  const cards = {};
+  for (const [id, p] of room.players) {
+    cards[id] = { name: p.name, emoji: p.emoji, card: p.card };
+  }
+  return cards;
+}
+
 function getRoomState(room, playerId) {
   const player = room.players.get(playerId);
   return {
@@ -103,7 +111,8 @@ function getRoomState(room, playerId) {
     playerName: player ? player.name : '',
     scoreboard: getScoreboard(room),
     winners: room.winners,
-    hostName: room.players.get(room.hostId)?.name || 'Host'
+    hostName: room.players.get(room.hostId)?.name || 'Host',
+    allCards: room.gameStarted ? getAllCards(room) : {}
   };
 }
 
@@ -196,7 +205,8 @@ wss.on('connection', (ws) => {
           type: 'phraseCalled', phrase: upper, calledBy: callerName,
           calledPhrases: [...currentRoom.calledPhrases],
           calledByMap: Object.fromEntries(currentRoom.calledBy),
-          scoreboard: getScoreboard(currentRoom)
+          scoreboard: getScoreboard(currentRoom),
+          allCards: getAllCards(currentRoom)
         });
         break;
       }
