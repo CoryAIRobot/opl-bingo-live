@@ -141,6 +141,23 @@ input[type=text]::placeholder{color:#555}
 .called-log .log-list{display:flex;flex-wrap:wrap;gap:4px;padding:8px 0}
 .called-log .log-chip{font-size:0.65rem;padding:4px 8px;background:var(--navy-light);border-radius:6px;color:#aaa;border:1px solid #333}
 .called-log .log-chip .by{color:#666;font-style:italic}
+/* Inline chat on game screen */
+.inline-chat{width:100%;max-width:500px;margin-top:6px;background:var(--navy-light);border-radius:12px;border:1px solid #333;overflow:hidden}
+.inline-chat-last{padding:8px 12px;min-height:36px;display:flex;align-items:center;cursor:pointer;transition:background .15s;
+  border-bottom:1px solid rgba(255,255,255,0.05)}
+.inline-chat-last:active{background:var(--navy)}
+.inline-chat-last .inline-msg-emoji{font-size:0.9rem;margin-right:6px;flex-shrink:0}
+.inline-chat-last .inline-msg-name{font-size:0.65rem;color:var(--red-light);font-weight:700;margin-right:6px;text-transform:uppercase;flex-shrink:0}
+.inline-chat-last .inline-msg-text{font-size:0.8rem;color:#ccc;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;flex:1}
+.inline-chat-last .inline-chat-placeholder{font-size:0.75rem;color:#555}
+.inline-chat-last .inline-chat-expand{font-size:0.6rem;color:#555;margin-left:8px;text-transform:uppercase;letter-spacing:1px;flex-shrink:0}
+.inline-chat-input{display:flex;gap:6px;padding:6px 8px}
+.inline-chat-input input{flex:1;padding:8px 12px;border-radius:8px;border:1.5px solid #333;background:var(--navy);
+  color:#fff;font-size:0.85rem;outline:none}
+.inline-chat-input input:focus{border-color:var(--red)}
+.inline-chat-input button{width:36px;height:36px;border-radius:8px;background:linear-gradient(135deg,var(--red),var(--red-light));
+  color:#fff;font-size:1rem;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+
 .host-controls{display:flex;gap:8px;flex-wrap:wrap;justify-content:center;margin-top:8px}
 
 /* Chat */
@@ -268,9 +285,21 @@ input[type=text]::placeholder{color:#555}
   </div>
   <div class="call-area">
     <p>Tap a square when you hear it on the show!</p>
-    <div style="text-align:center;margin-top:8px;">
-      <button class="btn btn-sm" onclick="leaveGame()" style="background:rgba(255,255,255,0.08);color:#888;">← Leave Game</button>
+  </div>
+
+  <!-- Inline chat bar -->
+  <div class="inline-chat" id="inlineChat">
+    <div class="inline-chat-last" id="inlineChatLast" onclick="toggleChat()">
+      <span class="inline-chat-placeholder">💬 No messages yet</span>
     </div>
+    <div class="inline-chat-input">
+      <input type="text" id="inlineChatInput" placeholder="Chat..." maxlength="300" autocomplete="off">
+      <button onclick="sendInlineChat()">➤</button>
+    </div>
+  </div>
+
+  <div style="text-align:center;margin-top:8px;">
+    <button class="btn btn-sm" onclick="leaveGame()" style="background:rgba(255,255,255,0.08);color:#888;">← Leave Game</button>
   </div>
 
   <div class="host-controls" id="hostControls" style="display:none">
@@ -503,6 +532,23 @@ function sendChat() {
   input.focus();
 }
 
+function updateInlineChat(msg) {
+  const el = document.getElementById('inlineChatLast');
+  el.innerHTML = `
+    <span class="inline-msg-emoji">${msg.emoji}</span>
+    <span class="inline-msg-name">${msg.name}</span>
+    <span class="inline-msg-text">${escapeHtml(msg.text)}</span>
+    <span class="inline-chat-expand">💬 open</span>`;
+}
+
+function sendInlineChat() {
+  const input = document.getElementById('inlineChatInput');
+  const text = input.value.trim();
+  if (!text) return;
+  send({ type: 'chat', text });
+  input.value = '';
+}
+
 function addChatMessage(msg) {
   const time = new Date(msg.ts).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
   const html = `
@@ -512,6 +558,9 @@ function addChatMessage(msg) {
       <div class="chat-text">${escapeHtml(msg.text)}</div>
       <div class="chat-time">${time}</div>
     </div>`;
+
+  // Update inline chat preview
+  updateInlineChat(msg);
 
   // Add to game chat panel
   const gameChat = document.getElementById('chatMessages');
@@ -575,6 +624,9 @@ document.getElementById('chatInput').addEventListener('keydown', e => {
 });
 document.getElementById('waitChatInput').addEventListener('keydown', e => {
   if (e.key === 'Enter') sendChat();
+});
+document.getElementById('inlineChatInput').addEventListener('keydown', e => {
+  if (e.key === 'Enter') sendInlineChat();
 });
 
 // ── Message Handler ──
