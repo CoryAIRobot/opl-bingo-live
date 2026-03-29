@@ -5,7 +5,6 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <title>🚔 OPL Bingo Live</title>
 <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@400;600;700&family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
-<script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
 <style>
 :root {
   --red:#cc0000; --red-light:#ff4444; --navy:#0a1628; --navy-light:#132040;
@@ -18,7 +17,6 @@ button{font-family:'Inter',sans-serif;cursor:pointer;border:none;outline:none}
 .screen{display:none;min-height:100dvh;flex-direction:column;align-items:center;padding:20px}
 .screen.active{display:flex}
 
-/* Lobby */
 #lobby{justify-content:center;gap:20px;text-align:center}
 .logo{font-family:'Oswald',sans-serif;font-size:2.8rem;font-weight:700;letter-spacing:3px;
   background:linear-gradient(135deg,var(--red),var(--red-light));-webkit-background-clip:text;-webkit-text-fill-color:transparent}
@@ -43,7 +41,6 @@ input[type=text]::placeholder{color:#555}
 .btn-sm{padding:10px 20px;font-size:0.85rem}
 .or-divider{color:#555;font-size:0.85rem;text-transform:uppercase;letter-spacing:2px;margin:8px 0}
 
-/* Waiting */
 #waiting{justify-content:flex-start;padding-top:40px;gap:16px;text-align:center}
 .room-code-display{font-family:'Oswald',sans-serif;font-size:3.5rem;letter-spacing:10px;color:var(--gold);text-shadow:0 0 20px rgba(255,215,0,0.3)}
 .room-code-label{font-size:0.85rem;color:#888;text-transform:uppercase;letter-spacing:3px;margin-bottom:4px}
@@ -54,8 +51,12 @@ input[type=text]::placeholder{color:#555}
 .player-chip{background:var(--navy-light);border:1px solid #333;border-radius:12px;padding:8px 14px;font-size:0.85rem;display:flex;align-items:center;gap:6px}
 .player-chip .host-badge{font-size:0.65rem;background:var(--gold);color:#000;padding:2px 6px;border-radius:4px;font-weight:700}
 .connecting-msg{color:#888;font-size:0.85rem;margin-top:8px}
+.status-dot{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:6px}
+.status-dot.connected{background:var(--green)}
+.status-dot.connecting{background:#f59e0b;animation:pulse 1s infinite}
+.status-dot.disconnected{background:#ef4444}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
 
-/* Game */
 #game{padding:10px;gap:8px;padding-bottom:100px}
 .game-header{display:flex;align-items:center;justify-content:space-between;width:100%;max-width:500px;padding:6px 0}
 .game-header .room-info{font-family:'Oswald',sans-serif;font-size:1rem;color:var(--red-light);letter-spacing:2px}
@@ -83,7 +84,6 @@ input[type=text]::placeholder{color:#555}
   border-radius:16px;background:linear-gradient(135deg,var(--gold),#ffaa00);color:#000;
   box-shadow:0 4px 20px rgba(255,215,0,0.3);transition:transform .1s;font-weight:700}
 .bingo-btn:active{transform:scale(0.95)}
-.bingo-btn:disabled{opacity:0.4;cursor:not-allowed}
 .scoreboard-toggle{position:fixed;top:10px;right:10px;z-index:200;width:44px;height:44px;
   border-radius:12px;background:var(--navy-light);border:1px solid #333;font-size:1.2rem;
   display:flex;align-items:center;justify-content:center}
@@ -168,7 +168,9 @@ input[type=text]::placeholder{color:#555}
   <div class="room-code-label">Room Code</div>
   <div class="room-code-display" id="waitRoomCode">----</div>
   <div class="share-link" id="shareLink" onclick="copyLink()">Tap to copy invite link 📋</div>
-  <div class="connecting-msg" id="connectMsg">Waiting for players...</div>
+  <div class="connecting-msg" id="connectMsg">
+    <span class="status-dot connecting"></span>Connecting...
+  </div>
   <div class="player-list" id="waitPlayerList"></div>
   <button class="btn btn-green" id="startBtn" onclick="startGame()" style="display:none">🚔 Start Game</button>
 </div>
@@ -211,498 +213,257 @@ input[type=text]::placeholder{color:#555}
 
 <script>
 // ══════════════════════════════════════════════
-// OPL BINGO — P2P via PeerJS (Vercel-friendly)
-// Host's browser = game server. Players connect to host.
+// OPL BINGO — WebSocket Client
 // ══════════════════════════════════════════════
 
-const PHRASES = [
-  "I only had 2 drinks","Those aren't my pants","I was scared","That's not mine",
-  "I was holding it for a friend","I don't consent to a search","Am I being detained?",
-  "I know my rights","I didn't do anything wrong","I was just leaving",
-  "My license is suspended","I live right around the corner","I just bought this car",
-  "I didn't know about the warrant","She/He started it","I'm being honest with you, officer",
-  "Can I just get a warning?","I wasn't speeding","I don't have my ID on me",
-  "My kids are in the car","I'm not drunk, I'm tired","I have a medical condition",
-  "Can you call my girlfriend?","I was borrowing the car","I plead the fifth",
-  "I want a lawyer","You can search, I got nothing to hide","Someone runs from the cops",
-  "Shirtless suspect","K9 gets deployed","Suspect is barefoot","Dan says 'breaking news'",
-  "Sticks roasts somebody","Officer says 'stop resisting'","Do you have anything sharp on you?",
-  "Step out of the vehicle","How much have you had to drink?",
-  "Scale of 1 to 10 how drunk are you?","Car has no registration",
-  "Pulled over with no headlights","It's my friend's car","I'm a sovereign citizen",
-  "Suspect cries","Cops find drugs in the car","Someone is passed out behind the wheel",
-  "Domestic disturbance call","I didn't hit nobody","Florida Man moment",
-  "My back hurts / I can't breathe","Suspect has outstanding warrants",
-  "I don't live here, I'm visiting","Dan Abrams laugh","Officer does a field sobriety test",
-  "Suspect has no shoes","I wasn't driving, I was parked","It was just a misunderstanding",
-  "We were just talking loud","Commercial break cliffhanger","I'm cooperating!",
-  "Somebody lies about their name","Car smells like marijuana",
-  "I got warrants in another state","Do you know who I am?","Officer finds a weapon",
-  "Suspect tries to eat the evidence","I was just holding it","Taser gets deployed",
-  "Someone is wearing pajamas","Car has a missing window or door",
-  "Multiple people blame each other","I'm on probation","Ride-along officer watches awkwardly",
-  "That's my baby mama's house","Suspect tries to walk away","Found something in the sock"
-];
+let ws;
+let state = {};
+let selectedEmoji = '🚔';
+let reconnectTimer;
+let pendingAction = null; // {type, data} to send after connect
 
-function shuffle(a){const b=[...a];for(let i=b.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[b[i],b[j]]=[b[j],b[i]]}return b}
-function makeCard(){const p=shuffle(PHRASES).slice(0,24);p.splice(12,0,'__FREE__');return p}
-function genCode(){const c='ABCDEFGHJKLMNPQRSTUVWXYZ23456789';let r='';for(let i=0;i<4;i++)r+=c[Math.floor(Math.random()*c.length)];return r}
-
-// ICE servers with TURN relay for NAT traversal
-const ICE_SERVERS = {
-  iceServers: [
-    { urls: "stun:stun.l.google.com:19302" },
-    { urls: "stun:stun.relay.metered.ca:80" },
-    { urls: "turn:global.relay.metered.ca:80", username: "e8dd65b92f6932a39e3055c1", credential: "uTH/Kpe/BFPTGXLQ" },
-    { urls: "turn:global.relay.metered.ca:80?transport=tcp", username: "e8dd65b92f6932a39e3055c1", credential: "uTH/Kpe/BFPTGXLQ" },
-    { urls: "turn:global.relay.metered.ca:443", username: "e8dd65b92f6932a39e3055c1", credential: "uTH/Kpe/BFPTGXLQ" },
-    { urls: "turns:global.relay.metered.ca:443?transport=tcp", username: "e8dd65b92f6932a39e3055c1", credential: "uTH/Kpe/BFPTGXLQ" }
-  ],
-  sdpSemantics: 'unified-plan'
-};
-
-function checkBingo(marked){
-  const g=Array(25).fill(false);marked.forEach(i=>g[i]=true);g[12]=true;
-  for(let r=0;r<5;r++)if([0,1,2,3,4].every(c=>g[r*5+c]))return true;
-  for(let c=0;c<5;c++)if([0,1,2,3,4].every(r=>g[r*5+c]))return true;
-  if([0,6,12,18,24].every(i=>g[i]))return true;
-  if([4,8,12,16,20].every(i=>g[i]))return true;
-  return false;
+function getWsUrl() {
+  const proto = location.protocol === 'https:' ? 'wss:' : 'ws:';
+  return `${proto}//${location.host}/ws`;
 }
 
-// ── State ──
-let peer = null;
-let isHost = false;
-let myId = '';
-let myName = '';
-let myEmoji = '🚔';
-let roomCode = '';
-let myCard = [];
-let selectedEmoji = '🚔';
+function connect() {
+  if (ws && (ws.readyState === WebSocket.OPEN || ws.readyState === WebSocket.CONNECTING)) return;
+  ws = new WebSocket(getWsUrl());
+  ws.onopen = () => {
+    console.log('WS connected');
+    updateStatusDot('connected');
+    // If we had a pending action (create/join), send it now
+    if (pendingAction) {
+      send(pendingAction);
+      pendingAction = null;
+    }
+  };
+  ws.onmessage = (e) => {
+    try { handleMessage(JSON.parse(e.data)); } catch(err) { console.error('Parse error:', err); }
+  };
+  ws.onclose = () => {
+    console.log('WS closed');
+    updateStatusDot('disconnected');
+    clearTimeout(reconnectTimer);
+    reconnectTimer = setTimeout(connect, 3000);
+  };
+  ws.onerror = (err) => {
+    console.error('WS error:', err);
+    updateStatusDot('disconnected');
+  };
+}
 
-// Host state
-let players = new Map(); // peerId -> {conn, name, emoji, card, hasBingo}
-let calledPhrases = new Set();
-let calledBy = new Map();
-let gameStarted = false;
-let winners = [];
+function send(msg) {
+  if (ws && ws.readyState === WebSocket.OPEN) {
+    ws.send(JSON.stringify(msg));
+  } else {
+    pendingAction = msg;
+    connect();
+  }
+}
 
-// Player state
-let hostConn = null;
-let playerCalledPhrases = [];
-let playerCalledBy = {};
-let playerScoreboard = [];
+function updateStatusDot(status) {
+  const dots = document.querySelectorAll('.status-dot');
+  dots.forEach(d => { d.className = 'status-dot ' + status; });
+}
+
+// Keep alive
+setInterval(() => { if (ws && ws.readyState === WebSocket.OPEN) send({type:'ping'}); }, 25000);
 
 // ── Emoji picker ──
-document.getElementById('emojiPick').addEventListener('click',e=>{
-  if(e.target.dataset.emoji){
-    document.querySelectorAll('.emoji-pick button').forEach(b=>b.classList.remove('selected'));
+document.getElementById('emojiPick').addEventListener('click', e => {
+  if (e.target.dataset.emoji) {
+    document.querySelectorAll('.emoji-pick button').forEach(b => b.classList.remove('selected'));
     e.target.classList.add('selected');
-    selectedEmoji=e.target.dataset.emoji;
+    selectedEmoji = e.target.dataset.emoji;
   }
 });
 
-// ── Screens ──
-function showScreen(id){document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));document.getElementById(id).classList.add('active')}
+// ── Actions ──
+function createRoom() {
+  const name = document.getElementById('playerName').value.trim() || 'Player';
+  send({ type: 'create', name, emoji: selectedEmoji });
+  showScreen('waiting');
+  document.getElementById('connectMsg').innerHTML = '<span class="status-dot connecting"></span>Creating room...';
+}
 
-// ══════════════════
-// HOST LOGIC
-// ══════════════════
-function createRoom(){
-  myName=document.getElementById('playerName').value.trim()||'Host';
-  myEmoji=selectedEmoji;
-  roomCode=genCode();
-  isHost=true;
+function joinRoom() {
+  const name = document.getElementById('playerName').value.trim() || 'Player';
+  const code = document.getElementById('joinCode').value.trim().toUpperCase();
+  if (!code) { toast('Enter a room code!', 'error'); return; }
+  send({ type: 'join', name, emoji: selectedEmoji, code });
+  showScreen('waiting');
+  document.getElementById('waitRoomCode').textContent = code;
+  document.getElementById('connectMsg').innerHTML = '<span class="status-dot connecting"></span>Joining room...';
+}
 
-  peer=new Peer('opl-'+roomCode,{debug:0,config:ICE_SERVERS});
-  peer.on('open',id=>{
-    myId=id;
-    myCard=makeCard();
-    players.set(myId,{conn:null,name:myName,emoji:myEmoji,card:myCard,hasBingo:false});
-    showScreen('waiting');
-    document.getElementById('waitRoomCode').textContent=roomCode;
-    document.getElementById('startBtn').style.display='block';
-    renderWaitingPlayers();
-    updateShareLink();
-  });
-  peer.on('error',err=>{
-    if(err.type==='unavailable-id'){
-      roomCode=genCode();
-      peer.destroy();
-      createRoom();
-    } else {
-      toast('Connection error: '+err.type,'error');
-      console.error('Host peer error:',err);
-    }
-  });
-  peer.on('connection',conn=>{
-    conn.on('open',()=>{
-      conn.on('data',data=>hostHandleMessage(conn,data));
-    });
-    conn.on('close',()=>hostPlayerLeft(conn));
-    conn.on('error',err=>{console.error('Host conn error:',err);toast('Player connection error','error')});
+function startGame() { send({ type: 'startGame' }); }
+function resetGame() { send({ type: 'resetGame' }); }
+function claimBingo() { send({ type: 'claimBingo' }); }
+
+function copyLink() {
+  const code = state.roomCode || document.getElementById('waitRoomCode').textContent;
+  const url = `${location.origin}?room=${code}`;
+  navigator.clipboard.writeText(url).then(() => toast('Link copied! 📋', 'info')).catch(() => {
+    const ta = document.createElement('textarea'); ta.value = url; document.body.appendChild(ta);
+    ta.select(); document.execCommand('copy'); ta.remove(); toast('Link copied! 📋', 'info');
   });
 }
 
-function hostHandleMessage(conn,msg){
-  switch(msg.type){
-    case 'join':{
-      const card=makeCard();
-      players.set(conn.peer,{conn,name:msg.name,emoji:msg.emoji,card,hasBingo:false});
-      // Send them their state
-      conn.send({type:'state',card,gameStarted,calledPhrases:[...calledPhrases],
-        calledBy:Object.fromEntries(calledBy),roomCode,scoreboard:getScoreboard(),winners,isHost:false});
-      // Notify all
-      hostBroadcast({type:'playerJoined',name:msg.name,emoji:msg.emoji,scoreboard:getScoreboard()});
-      renderWaitingPlayers();
-      toast(`${msg.emoji} ${msg.name} joined!`,'info');
+function toggleScoreboard() { document.getElementById('scorePanel').classList.toggle('open'); }
+
+// ── Message Handler ──
+function handleMessage(msg) {
+  switch (msg.type) {
+    case 'welcome':
+      console.log('Server assigned ID:', msg.playerId);
       break;
-    }
-    case 'callPhrase':{
-      if(!gameStarted)return;
-      const upper=msg.phrase.toUpperCase();
-      if(calledPhrases.has(upper))return;
-      calledPhrases.add(upper);
-      const callerName=players.get(conn.peer)?.name||'???';
-      calledBy.set(upper,callerName);
-      hostBroadcast({type:'phraseCalled',phrase:upper,calledBy:callerName,
-        calledPhrases:[...calledPhrases],calledByMap:Object.fromEntries(calledBy),scoreboard:getScoreboard()});
-      // Also update host's own board
-      playerCalledPhrases=[...calledPhrases];
-      playerCalledBy=Object.fromEntries(calledBy);
-      playerScoreboard=getScoreboard();
-      if(gameStarted)renderBoard(upper);
-      renderScoreboard(playerScoreboard);
-      updateCalledLog();
-      break;
-    }
-    case 'claimBingo':{
-      if(!gameStarted)return;
-      const p=players.get(conn.peer);
-      if(!p||p.hasBingo)return;
-      const marked=new Set();
-      p.card.forEach((ph,i)=>{if(i===12||calledPhrases.has(ph.toUpperCase()))marked.add(i)});
-      if(checkBingo(marked)){
-        p.hasBingo=true;
-        const place=winners.length+1;
-        winners.push({name:p.name,emoji:p.emoji,place});
-        hostBroadcast({type:'bingo',name:p.name,emoji:p.emoji,place,winners,scoreboard:getScoreboard()});
-        playerScoreboard=getScoreboard();
-        renderScoreboard(playerScoreboard);
-        showWinner(p.emoji,p.name);
-      } else {
-        conn.send({type:'falseBingo',message:"Not quite! You don't have BINGO yet 😅"});
-      }
-      break;
-    }
-  }
-}
 
-function hostPlayerLeft(conn){
-  const p=players.get(conn.peer);
-  players.delete(conn.peer);
-  if(p)hostBroadcast({type:'playerLeft',name:p.name,scoreboard:getScoreboard()});
-  renderWaitingPlayers();
-}
-
-function hostBroadcast(msg){
-  for(const[pid,p]of players){
-    if(p.conn&&p.conn.open)p.conn.send(msg);
-  }
-}
-
-function hostCallPhrase(phrase){
-  if(!gameStarted)return;
-  const upper=phrase.toUpperCase();
-  if(calledPhrases.has(upper))return;
-  calledPhrases.add(upper);
-  calledBy.set(upper,myName);
-  hostBroadcast({type:'phraseCalled',phrase:upper,calledBy:myName,
-    calledPhrases:[...calledPhrases],calledByMap:Object.fromEntries(calledBy),scoreboard:getScoreboard()});
-  playerCalledPhrases=[...calledPhrases];
-  playerCalledBy=Object.fromEntries(calledBy);
-  playerScoreboard=getScoreboard();
-  renderBoard(upper);
-  renderScoreboard(playerScoreboard);
-  updateCalledLog();
-}
-
-function hostClaimBingo(){
-  if(!gameStarted)return;
-  const p=players.get(myId);
-  if(!p||p.hasBingo)return;
-  const marked=new Set();
-  p.card.forEach((ph,i)=>{if(i===12||calledPhrases.has(ph.toUpperCase()))marked.add(i)});
-  if(checkBingo(marked)){
-    p.hasBingo=true;
-    const place=winners.length+1;
-    winners.push({name:myName,emoji:myEmoji,place});
-    hostBroadcast({type:'bingo',name:myName,emoji:myEmoji,place,winners,scoreboard:getScoreboard()});
-    playerScoreboard=getScoreboard();
-    renderScoreboard(playerScoreboard);
-    showWinner(myEmoji,myName);
-  } else {
-    toast("Not quite! You don't have BINGO yet 😅",'error');
-  }
-}
-
-function getScoreboard(){
-  const board=[];
-  for(const[pid,p]of players){
-    const marked=p.card.filter((ph,i)=>i===12||calledPhrases.has(ph.toUpperCase())).length;
-    board.push({name:p.name,emoji:p.emoji,marked,hasBingo:p.hasBingo||false});
-  }
-  board.sort((a,b)=>b.marked-a.marked);
-  return board;
-}
-
-function startGame(){
-  gameStarted=true;
-  calledPhrases=new Set();
-  calledBy=new Map();
-  winners=[];
-  for(const[pid,p]of players){p.card=makeCard();p.hasBingo=false;}
-  // Send each player their card
-  for(const[pid,p]of players){
-    if(p.conn&&p.conn.open){
-      p.conn.send({type:'gameStart',card:p.card,calledPhrases:[],calledBy:{},scoreboard:getScoreboard(),winners:[]});
-    }
-  }
-  // Set up host's own view
-  const me=players.get(myId);
-  myCard=me.card;
-  playerCalledPhrases=[];
-  playerCalledBy={};
-  playerScoreboard=getScoreboard();
-  showScreen('game');
-  document.getElementById('gameRoomInfo').textContent=`🚨 ${roomCode}`;
-  document.getElementById('hostControls').style.display='flex';
-  renderBoard();
-  renderScoreboard(playerScoreboard);
-  updateCalledLog();
-}
-
-function resetGame(){
-  gameStarted=false;
-  startGame();
-}
-
-// ══════════════════
-// PLAYER (non-host) LOGIC
-// ══════════════════
-function joinRoom(){
-  myName=document.getElementById('playerName').value.trim()||'Player';
-  myEmoji=selectedEmoji;
-  const code=document.getElementById('joinCode').value.trim().toUpperCase();
-  if(!code){toast('Enter a room code!','error');return}
-  roomCode=code;
-  isHost=false;
-
-  peer=new Peer(undefined,{debug:0,config:ICE_SERVERS});
-  peer.on('open',id=>{
-    myId=id;
-    showScreen('waiting');
-    document.getElementById('waitRoomCode').textContent=roomCode;
-    document.getElementById('connectMsg').textContent='Connecting to host...';
-    const conn=peer.connect('opl-'+roomCode,{reliable:true});
-    hostConn=conn;
-    let connected=false;
-    conn.on('open',()=>{
-      connected=true;
-      conn.send({type:'join',name:myName,emoji:myEmoji});
-      document.getElementById('connectMsg').textContent='Connected! Waiting for host to start...';
-    });
-    conn.on('data',data=>playerHandleMessage(data));
-    conn.on('close',()=>{
-      if(connected){toast('Disconnected from host','error');showScreen('lobby')}
-    });
-    conn.on('error',err=>{
-      console.error('Player conn error:',err);
-      toast('Connection error — try again','error');
-    });
-    // Timeout if connection doesn't open
-    setTimeout(()=>{
-      if(!connected){
-        toast('Could not reach host — make sure they have the game open','error');
-        showScreen('lobby');
-        try{peer.destroy()}catch(e){}
-      }
-    },15000);
-  });
-  peer.on('error',err=>{
-    console.error('Player peer error:',err);
-    if(err.type==='peer-unavailable'){
-      toast('Room not found! Make sure the host has the game open.','error');
-      showScreen('lobby');
-    } else {
-      toast('Connection error: '+err.type+'. Try again.','error');
-      showScreen('lobby');
-    }
-  });
-}
-
-function playerHandleMessage(msg){
-  switch(msg.type){
     case 'state':
-      myCard=msg.card;
-      playerCalledPhrases=msg.calledPhrases||[];
-      playerCalledBy=msg.calledBy||{};
-      playerScoreboard=msg.scoreboard||[];
-      if(msg.gameStarted){
+      state = msg;
+      if (msg.gameStarted) {
         showScreen('game');
-        document.getElementById('gameRoomInfo').textContent=`🚨 ${roomCode}`;
         renderBoard();
+        renderScoreboard(msg.scoreboard);
+        updateCalledLog();
+        document.getElementById('gameRoomInfo').textContent = `🚨 ${msg.roomCode}`;
+        if (msg.isHost) document.getElementById('hostControls').style.display = 'flex';
+      } else {
+        showScreen('waiting');
+        document.getElementById('waitRoomCode').textContent = msg.roomCode;
+        document.getElementById('connectMsg').innerHTML = '<span class="status-dot connected"></span>Connected! Waiting for players...';
+        renderWaitingPlayers(msg.scoreboard);
+        if (msg.isHost) document.getElementById('startBtn').style.display = 'block';
+        updateShareLink(msg.roomCode);
       }
-      renderScoreboard(playerScoreboard);
-      renderWaitingPlayersList(playerScoreboard);
-      updateCalledLog();
       break;
+
     case 'playerJoined':
-      toast(`${msg.emoji} ${msg.name} joined!`,'info');
-      playerScoreboard=msg.scoreboard;
-      renderWaitingPlayersList(playerScoreboard);
-      renderScoreboard(playerScoreboard);
+      toast(`${msg.emoji} ${msg.name} joined!`, 'info');
+      if (msg.scoreboard) renderWaitingPlayers(msg.scoreboard);
+      renderScoreboard(msg.scoreboard);
       break;
+
     case 'playerLeft':
-      toast(`${msg.name} left`,'info');
-      playerScoreboard=msg.scoreboard;
-      renderScoreboard(playerScoreboard);
+      toast(`${msg.name} left`, 'info');
+      if (msg.scoreboard) { renderWaitingPlayers(msg.scoreboard); renderScoreboard(msg.scoreboard); }
       break;
-    case 'gameStart':
-      myCard=msg.card;
-      playerCalledPhrases=msg.calledPhrases||[];
-      playerCalledBy=msg.calledBy||{};
-      playerScoreboard=msg.scoreboard||[];
-      showScreen('game');
-      document.getElementById('gameRoomInfo').textContent=`🚨 ${roomCode}`;
-      renderBoard();
-      renderScoreboard(playerScoreboard);
-      updateCalledLog();
+
+    case 'gameStarted':
+      // Full state resend handles this
       break;
+
     case 'phraseCalled':
-      playerCalledPhrases=msg.calledPhrases;
-      playerCalledBy=msg.calledByMap;
-      playerScoreboard=msg.scoreboard;
+      state.calledPhrases = msg.calledPhrases;
+      state.calledBy = msg.calledByMap;
       renderBoard(msg.phrase);
-      renderScoreboard(playerScoreboard);
+      renderScoreboard(msg.scoreboard);
       updateCalledLog();
-      toast(`"${msg.phrase}" — called by ${msg.calledBy}`,'info');
-      if(navigator.vibrate)navigator.vibrate(50);
+      toast(`"${msg.phrase}" — ${msg.calledBy}`, 'info');
+      if (navigator.vibrate) navigator.vibrate(50);
       break;
+
     case 'bingo':
-      playerScoreboard=msg.scoreboard;
-      renderScoreboard(playerScoreboard);
-      showWinner(msg.emoji,msg.name);
+      renderScoreboard(msg.scoreboard);
+      document.getElementById('winnerName').textContent = `${msg.emoji} ${msg.name}`;
+      document.getElementById('winnerOverlay').classList.add('active');
+      if (navigator.vibrate) navigator.vibrate([200, 100, 200, 100, 400]);
       break;
+
     case 'falseBingo':
-      toast(msg.message,'error');
+      toast(msg.message, 'error');
+      break;
+
+    case 'newHost':
+      toast(`${msg.name} is the new host`, 'info');
+      break;
+
+    case 'error':
+      toast(msg.message, 'error');
+      showScreen('lobby');
+      break;
+
+    case 'pong':
       break;
   }
 }
 
-function playerCallPhrase(phrase){
-  if(hostConn&&hostConn.open)hostConn.send({type:'callPhrase',phrase});
+// ── UI Rendering ──
+function showScreen(id) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
 }
 
-function playerClaimBingo(){
-  if(hostConn&&hostConn.open)hostConn.send({type:'claimBingo'});
+function renderWaitingPlayers(scoreboard) {
+  const el = document.getElementById('waitPlayerList');
+  el.innerHTML = (scoreboard || []).map((p, i) => `
+    <div class="player-chip"><span>${p.emoji}</span><span>${p.name}</span>
+    ${i === 0 ? '<span class="host-badge">HOST</span>' : ''}</div>`).join('');
 }
 
-// ══════════════════
-// SHARED UI
-// ══════════════════
-function renderBoard(justCalledPhrase){
-  const grid=document.getElementById('bingoGrid');
-  const called=isHost?[...calledPhrases]:playerCalledPhrases;
-  const calledSet=new Set(called.map(p=>p.toUpperCase()));
-  grid.innerHTML=myCard.map((phrase,i)=>{
-    if(phrase==='__FREE__')return `<div class="cell free"><span class="icon">🚔</span><span class="badge">FREE</span></div>`;
-    const isCalled=calledSet.has(phrase.toUpperCase());
-    const justCalled=justCalledPhrase&&phrase.toUpperCase()===justCalledPhrase.toUpperCase();
-    return `<div class="cell${isCalled?' called':''}${justCalled?' just-called':''}" onclick="onCellClick(${i})">${phrase}</div>`;
+function renderBoard(justCalledPhrase) {
+  const grid = document.getElementById('bingoGrid');
+  const calledSet = new Set((state.calledPhrases || []).map(p => p.toUpperCase()));
+  grid.innerHTML = state.card.map((phrase, i) => {
+    if (phrase === '__FREE__') return `<div class="cell free"><span class="icon">🚔</span><span class="badge">FREE</span></div>`;
+    const isCalled = calledSet.has(phrase.toUpperCase());
+    const justCalled = justCalledPhrase && phrase.toUpperCase() === justCalledPhrase.toUpperCase();
+    return `<div class="cell${isCalled ? ' called' : ''}${justCalled ? ' just-called' : ''}" onclick="callPhrase(${i})">${phrase}</div>`;
   }).join('');
-  document.getElementById('calledCount').textContent=`${called.length} called`;
+  document.getElementById('calledCount').textContent = `${(state.calledPhrases || []).length} called`;
 }
 
-function onCellClick(index){
-  const phrase=myCard[index];
-  if(!phrase||phrase==='__FREE__')return;
-  if(isHost)hostCallPhrase(phrase);
-  else playerCallPhrase(phrase);
+function callPhrase(index) {
+  const phrase = state.card[index];
+  if (!phrase || phrase === '__FREE__') return;
+  if ((state.calledPhrases || []).map(p => p.toUpperCase()).includes(phrase.toUpperCase())) return;
+  send({ type: 'callPhrase', phrase });
 }
 
-function claimBingo(){
-  if(isHost)hostClaimBingo();
-  else playerClaimBingo();
-}
-
-function renderScoreboard(sb){
-  if(!sb)return;
-  document.getElementById('scoreList').innerHTML=sb.map((p,i)=>`
-    <div class="sb-row${p.hasBingo?' winner':''}">
-      <span class="rank">#${i+1}</span><span>${p.emoji}</span>
+function renderScoreboard(sb) {
+  if (!sb) return;
+  document.getElementById('scoreList').innerHTML = sb.map((p, i) => `
+    <div class="sb-row${p.hasBingo ? ' winner' : ''}">
+      <span class="rank">#${i + 1}</span><span>${p.emoji}</span>
       <span class="name">${p.name}</span><span class="count">${p.marked}/25</span>
     </div>`).join('');
 }
 
-function renderWaitingPlayers(){
-  if(!isHost)return;
-  const sb=getScoreboard();
-  renderWaitingPlayersList(sb);
+function updateCalledLog() {
+  const list = state.calledPhrases || [];
+  const byMap = state.calledBy || {};
+  document.getElementById('calledTotal').textContent = list.length;
+  document.getElementById('calledLogList').innerHTML = list.map(p =>
+    `<span class="log-chip">${p} <span class="by">${byMap[p] ? '— ' + byMap[p] : ''}</span></span>`).join('');
 }
 
-function renderWaitingPlayersList(sb){
-  const el=document.getElementById('waitPlayerList');
-  el.innerHTML=(sb||[]).map((p,i)=>`
-    <div class="player-chip"><span>${p.emoji}</span><span>${p.name}</span>
-    ${i===0?'<span class="host-badge">HOST</span>':''}</div>`).join('');
+function updateShareLink(code) {
+  const url = `${location.origin}?room=${code || state.roomCode}`;
+  const el = document.getElementById('shareLink');
+  el.textContent = `${url}  📋 Tap to copy`;
 }
 
-function updateCalledLog(){
-  const list=isHost?[...calledPhrases]:playerCalledPhrases;
-  const byMap=isHost?Object.fromEntries(calledBy):playerCalledBy;
-  document.getElementById('calledTotal').textContent=list.length;
-  document.getElementById('calledLogList').innerHTML=list.map(p=>
-    `<span class="log-chip">${p} <span class="by">${byMap[p]?'— '+byMap[p]:''}</span></span>`).join('');
+function toast(text, type = 'info') {
+  const t = document.createElement('div');
+  t.className = `toast ${type}`;
+  t.textContent = text;
+  document.body.appendChild(t);
+  setTimeout(() => t.remove(), 3500);
 }
 
-function updateShareLink(){
-  const url=`${location.origin}?room=${roomCode}`;
-  const el=document.getElementById('shareLink');
-  el.textContent=`${url} 📋 Tap to copy`;
-}
-
-function copyLink(){
-  const url=`${location.origin}?room=${roomCode}`;
-  navigator.clipboard.writeText(url).then(()=>toast('Link copied! 📋','info')).catch(()=>{
-    // Fallback
-    const ta=document.createElement('textarea');ta.value=url;document.body.appendChild(ta);ta.select();document.execCommand('copy');ta.remove();
-    toast('Link copied! 📋','info');
-  });
-}
-
-function toggleScoreboard(){document.getElementById('scorePanel').classList.toggle('open')}
-
-function showWinner(emoji,name){
-  document.getElementById('winnerName').textContent=`${emoji} ${name}`;
-  document.getElementById('winnerOverlay').classList.add('active');
-  if(navigator.vibrate)navigator.vibrate([200,100,200,100,400]);
-}
-
-function toast(text,type='info'){
-  const t=document.createElement('div');t.className=`toast ${type}`;t.textContent=text;
-  document.body.appendChild(t);setTimeout(()=>t.remove(),3500);
-}
+// ── Init ──
+connect();
 
 // Auto-fill code from URL
-const params=new URLSearchParams(location.search);
-if(params.get('room'))document.getElementById('joinCode').value=params.get('room');
+const params = new URLSearchParams(location.search);
+if (params.get('room')) document.getElementById('joinCode').value = params.get('room');
 
 // Enter key
-document.getElementById('playerName').addEventListener('keydown',e=>{
-  if(e.key==='Enter'){document.getElementById('joinCode').value?joinRoom():createRoom()}
+document.getElementById('playerName').addEventListener('keydown', e => {
+  if (e.key === 'Enter') { document.getElementById('joinCode').value ? joinRoom() : createRoom(); }
 });
-document.getElementById('joinCode').addEventListener('keydown',e=>{if(e.key==='Enter')joinRoom()});
+document.getElementById('joinCode').addEventListener('keydown', e => { if (e.key === 'Enter') joinRoom(); });
 </script>
 </body>
 </html>
