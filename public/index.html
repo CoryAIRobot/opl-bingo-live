@@ -266,7 +266,12 @@ input[type=text]::placeholder{color:#555}
     <div class="bingo-letters"><span>B</span><span>I</span><span>N</span><span>G</span><span>O</span></div>
     <div class="bingo-grid" id="bingoGrid"></div>
   </div>
-  <div class="call-area"><p>Tap a square when you hear it on the show!</p></div>
+  <div class="call-area">
+    <p>Tap a square when you hear it on the show!</p>
+    <div style="text-align:center;margin-top:8px;">
+      <button class="btn btn-sm" onclick="leaveGame()" style="background:rgba(255,255,255,0.08);color:#888;">← Leave Game</button>
+    </div>
+  </div>
 
   <div class="host-controls" id="hostControls" style="display:none">
     <button class="btn btn-red btn-sm" onclick="resetGame()">🔄 New Round</button>
@@ -314,6 +319,7 @@ input[type=text]::placeholder{color:#555}
   <div class="winner-name" id="winnerName">---</div>
   <div class="winner-sub">got BINGO!</div>
   <button class="btn btn-gold" style="margin-top:20px" onclick="document.getElementById('winnerOverlay').classList.remove('active')">Continue Playing</button>
+  <button class="btn btn-sm" onclick="document.getElementById('winnerOverlay').classList.remove('active');leaveGame()" style="background:rgba(255,255,255,0.1);color:#aaa;margin-top:8px;">← Leave Game</button>
 </div>
 
 <script>
