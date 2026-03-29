@@ -779,8 +779,12 @@ function toast(text, type = 'info') {
 // ── Init ──
 connect();
 
-// Auto-fill code from URL
+// Auto-fill code from URL, handle reset
 const params = new URLSearchParams(location.search);
+if (params.has('reset')) {
+  clearSession();
+  history.replaceState(null, '', location.pathname);
+}
 if (params.get('room')) document.getElementById('joinCode').value = params.get('room');
 
 // Enter key
