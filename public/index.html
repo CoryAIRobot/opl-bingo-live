@@ -243,10 +243,7 @@ input[type=text]::placeholder{color:#555}
     <div class="bingo-grid" id="bingoGrid"></div>
   </div>
   <div class="call-area"><p>Tap a square when you hear it on the show!</p></div>
-  <details class="called-log">
-    <summary>Called Phrases (<span id="calledTotal">0</span>)</summary>
-    <div class="log-list" id="calledLogList"></div>
-  </details>
+
   <div class="host-controls" id="hostControls" style="display:none">
     <button class="btn btn-red btn-sm" onclick="resetGame()">🔄 New Round</button>
   </div>
@@ -304,8 +301,9 @@ let state = {};
 let selectedEmoji = '🚔';
 let reconnectTimer;
 let pendingAction = null;
-let allCards = {}; // playerId -> {name, emoji, card}
-let viewingPlayerId = null; // currently viewing this player's card
+let allCards = {}; // playerId -> {name, emoji, card, markedIndices}
+let viewingPlayerId = null;
+let myMarkedIndices = new Set(); // this player's own marked squares
 
 function getWsUrl() {
   const proto = location.protocol === 'https:' ? 'wss:' : 'ws:';
@@ -486,17 +484,18 @@ function handleMessage(msg) {
 
     case 'state':
       state = msg;
+      myMarkedIndices = new Set(msg.markedIndices || []);
       if (msg.allCards) allCards = msg.allCards;
       if (msg.gameStarted) {
         showScreen('game');
         renderBoard();
         renderScoreboard(msg.scoreboard);
-        updateCalledLog();
         refreshCardViewer();
         document.getElementById('gameRoomInfo').textContent = `🚨 ${msg.roomCode}`;
         if (msg.isHost) document.getElementById('hostControls').style.display = 'flex';
       } else {
         showScreen('waiting');
+        myMarkedIndices = new Set();
         document.getElementById('waitRoomCode').textContent = msg.roomCode;
         document.getElementById('connectMsg').innerHTML = '<span class="status-dot connected"></span>Connected! Waiting for players...';
         renderWaitingPlayers(msg.scoreboard);
@@ -526,16 +525,10 @@ function handleMessage(msg) {
       // Full state resend handles this
       break;
 
-    case 'phraseCalled':
-      state.calledPhrases = msg.calledPhrases;
-      state.calledBy = msg.calledByMap;
+    case 'playerMarked':
       if (msg.allCards) allCards = msg.allCards;
-      renderBoard(msg.phrase);
       renderScoreboard(msg.scoreboard);
-      updateCalledLog();
       refreshCardViewer();
-      toast(`"${msg.phrase}" — ${msg.calledBy}`, 'info');
-      if (navigator.vibrate) navigator.vibrate(50);
       break;
 
     case 'bingo':
@@ -577,23 +570,25 @@ function renderWaitingPlayers(scoreboard) {
     ${i === 0 ? '<span class="host-badge">HOST</span>' : ''}</div>`).join('');
 }
 
-function renderBoard(justCalledPhrase) {
+function renderBoard(justMarkedIndex) {
   const grid = document.getElementById('bingoGrid');
-  const calledSet = new Set((state.calledPhrases || []).map(p => p.toUpperCase()));
   grid.innerHTML = state.card.map((phrase, i) => {
     if (phrase === '__FREE__') return `<div class="cell free"><span class="icon">🚔</span><span class="badge">FREE</span></div>`;
-    const isCalled = calledSet.has(phrase.toUpperCase());
-    const justCalled = justCalledPhrase && phrase.toUpperCase() === justCalledPhrase.toUpperCase();
-    return `<div class="cell${isCalled ? ' called' : ''}${justCalled ? ' just-called' : ''}" onclick="callPhrase(${i})">${phrase}</div>`;
+    const isMarked = myMarkedIndices.has(i);
+    const justCalled = justMarkedIndex === i;
+    return `<div class="cell${isMarked ? ' called' : ''}${justCalled ? ' just-called' : ''}" onclick="markSquare(${i})">${phrase}</div>`;
   }).join('');
-  document.getElementById('calledCount').textContent = `${(state.calledPhrases || []).length} called`;
+  document.getElementById('calledCount').textContent = `${myMarkedIndices.size} marked`;
 }
 
-function callPhrase(index) {
+function markSquare(index) {
   const phrase = state.card[index];
   if (!phrase || phrase === '__FREE__') return;
-  if ((state.calledPhrases || []).map(p => p.toUpperCase()).includes(phrase.toUpperCase())) return;
-  send({ type: 'callPhrase', phrase });
+  if (myMarkedIndices.has(index)) return; // already marked
+  myMarkedIndices.add(index);
+  renderBoard(index);
+  send({ type: 'markSquare', index });
+  if (navigator.vibrate) navigator.vibrate(30);
 }
 
 function renderScoreboard(sb) {
@@ -610,7 +605,7 @@ function viewCard(playerId) {
   if (!pdata || !pdata.card) { toast('Card not available yet', 'info'); return; }
   viewingPlayerId = playerId;
   document.getElementById('viewerName').textContent = `${pdata.emoji} ${pdata.name}'s Card`;
-  renderViewerGrid(pdata.card);
+  renderViewerGrid(pdata.card, pdata.markedIndices);
   document.getElementById('cardViewerOverlay').classList.add('active');
 }
 
@@ -623,25 +618,19 @@ function refreshCardViewer() {
   if (!viewingPlayerId) return;
   const pdata = allCards[viewingPlayerId];
   if (!pdata) { closeCardViewer(); return; }
-  renderViewerGrid(pdata.card);
+  renderViewerGrid(pdata.card, pdata.markedIndices);
 }
 
-function renderViewerGrid(card) {
-  const calledSet = new Set((state.calledPhrases || []).map(p => p.toUpperCase()));
+function renderViewerGrid(card, markedIndices) {
+  const marked = new Set(markedIndices || []);
   document.getElementById('viewerGrid').innerHTML = card.map((phrase, i) => {
     if (phrase === '__FREE__') return `<div class="vcell free"><span class="icon">🚔</span><span class="badge">FREE</span></div>`;
-    const isCalled = calledSet.has(phrase.toUpperCase());
-    return `<div class="vcell${isCalled ? ' called' : ''}">${phrase}</div>`;
+    const isMarked = marked.has(i);
+    return `<div class="vcell${isMarked ? ' called' : ''}">${phrase}</div>`;
   }).join('');
 }
 
-function updateCalledLog() {
-  const list = state.calledPhrases || [];
-  const byMap = state.calledBy || {};
-  document.getElementById('calledTotal').textContent = list.length;
-  document.getElementById('calledLogList').innerHTML = list.map(p =>
-    `<span class="log-chip">${p} <span class="by">${byMap[p] ? '— ' + byMap[p] : ''}</span></span>`).join('');
-}
+
 
 function updateShareLink(code) {
   const url = `${location.origin}?room=${code || state.roomCode}`;

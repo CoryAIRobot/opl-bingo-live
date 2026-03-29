@@ -82,7 +82,7 @@ function broadcast(room, msg) {
 function getScoreboard(room) {
   const board = [];
   for (const [id, p] of room.players) {
-    const marked = p.card.filter((ph, i) => i === 12 || room.calledPhrases.has(ph.toUpperCase())).length;
+    const marked = (p.markedIndices ? p.markedIndices.size : 0) + 1; // +1 for free space
     board.push({ id, name: p.name, emoji: p.emoji, marked, hasBingo: p.hasBingo || false });
   }
   board.sort((a, b) => b.marked - a.marked);
@@ -92,7 +92,7 @@ function getScoreboard(room) {
 function getAllCards(room) {
   const cards = {};
   for (const [id, p] of room.players) {
-    cards[id] = { name: p.name, emoji: p.emoji, card: p.card };
+    cards[id] = { name: p.name, emoji: p.emoji, card: p.card, markedIndices: [...(p.markedIndices || [])] };
   }
   return cards;
 }
@@ -104,9 +104,8 @@ function getRoomState(room, playerId) {
     roomCode: room.code,
     isHost: room.hostId === playerId,
     gameStarted: room.gameStarted,
-    calledPhrases: [...room.calledPhrases],
-    calledBy: Object.fromEntries(room.calledBy),
     card: player ? player.card : [],
+    markedIndices: player ? [...(player.markedIndices || [])] : [],
     playerId,
     playerName: player ? player.name : '',
     scoreboard: getScoreboard(room),
@@ -172,7 +171,7 @@ wss.on('connection', (ws) => {
           createdAt: Date.now()
         };
         const card = makeCard();
-        room.players.set(playerId, { ws, name: msg.name || 'Host', emoji: msg.emoji || '🚔', card, hasBingo: false });
+        room.players.set(playerId, { ws, name: msg.name || 'Host', emoji: msg.emoji || '🚔', card, hasBingo: false, markedIndices: new Set() });
         rooms.set(code, room);
         currentRoom = room;
         ws.send(JSON.stringify(getRoomState(room, playerId)));
@@ -186,7 +185,7 @@ wss.on('connection', (ws) => {
         if (!room) { ws.send(JSON.stringify({ type: 'error', message: 'Room not found! Check your code.' })); return; }
         if (room.players.size >= 20) { ws.send(JSON.stringify({ type: 'error', message: 'Room is full (max 20).' })); return; }
         const card = makeCard();
-        room.players.set(playerId, { ws, name: msg.name || 'Player', emoji: msg.emoji || '🎲', card, hasBingo: false });
+        room.players.set(playerId, { ws, name: msg.name || 'Player', emoji: msg.emoji || '🎲', card, hasBingo: false, markedIndices: new Set() });
         currentRoom = room;
         broadcast(room, { type: 'playerJoined', name: msg.name, emoji: msg.emoji || '🎲', scoreboard: getScoreboard(room) });
         ws.send(JSON.stringify(getRoomState(room, playerId)));
@@ -194,17 +193,22 @@ wss.on('connection', (ws) => {
         break;
       }
 
-      case 'callPhrase': {
+      case 'markSquare': {
         if (!currentRoom || !currentRoom.gameStarted) return;
-        const upper = msg.phrase.toUpperCase();
-        if (currentRoom.calledPhrases.has(upper)) return;
-        currentRoom.calledPhrases.add(upper);
-        const callerName = currentRoom.players.get(playerId)?.name || '???';
-        currentRoom.calledBy.set(upper, callerName);
+        const player = currentRoom.players.get(playerId);
+        if (!player) return;
+        const index = msg.index;
+        if (typeof index !== 'number' || index < 0 || index > 24 || index === 12) return;
+        if (!player.markedIndices) player.markedIndices = new Set();
+        if (player.markedIndices.has(index)) return; // already marked
+        player.markedIndices.add(index);
+        // Notify everyone of updated scoreboard + cards
         broadcast(currentRoom, {
-          type: 'phraseCalled', phrase: upper, calledBy: callerName,
-          calledPhrases: [...currentRoom.calledPhrases],
-          calledByMap: Object.fromEntries(currentRoom.calledBy),
+          type: 'playerMarked',
+          playerId,
+          name: player.name,
+          emoji: player.emoji,
+          index,
           scoreboard: getScoreboard(currentRoom),
           allCards: getAllCards(currentRoom)
         });
@@ -215,8 +219,8 @@ wss.on('connection', (ws) => {
         if (!currentRoom || !currentRoom.gameStarted) return;
         const player = currentRoom.players.get(playerId);
         if (!player || player.hasBingo) return;
-        const markedIndices = new Set();
-        player.card.forEach((ph, i) => { if (i === 12 || currentRoom.calledPhrases.has(ph.toUpperCase())) markedIndices.add(i); });
+        const markedIndices = new Set(player.markedIndices || []);
+        markedIndices.add(12); // free space
         if (checkBingo(markedIndices)) {
           player.hasBingo = true;
           const place = currentRoom.winners.length + 1;
@@ -234,10 +238,8 @@ wss.on('connection', (ws) => {
       case 'startGame': {
         if (!currentRoom || currentRoom.hostId !== playerId) return;
         currentRoom.gameStarted = true;
-        currentRoom.calledPhrases = new Set();
-        currentRoom.calledBy = new Map();
         currentRoom.winners = [];
-        for (const [pid, p] of currentRoom.players) { p.card = makeCard(); p.hasBingo = false; }
+        for (const [pid, p] of currentRoom.players) { p.card = makeCard(); p.hasBingo = false; p.markedIndices = new Set(); }
         for (const [pid, p] of currentRoom.players) {
           if (p.ws && p.ws.readyState === 1) p.ws.send(JSON.stringify(getRoomState(currentRoom, pid)));
         }
@@ -249,10 +251,8 @@ wss.on('connection', (ws) => {
       case 'resetGame': {
         if (!currentRoom || currentRoom.hostId !== playerId) return;
         currentRoom.gameStarted = true;
-        currentRoom.calledPhrases = new Set();
-        currentRoom.calledBy = new Map();
         currentRoom.winners = [];
-        for (const [pid, p] of currentRoom.players) { p.card = makeCard(); p.hasBingo = false; }
+        for (const [pid, p] of currentRoom.players) { p.card = makeCard(); p.hasBingo = false; p.markedIndices = new Set(); }
         for (const [pid, p] of currentRoom.players) {
           if (p.ws && p.ws.readyState === 1) p.ws.send(JSON.stringify(getRoomState(currentRoom, pid)));
         }
