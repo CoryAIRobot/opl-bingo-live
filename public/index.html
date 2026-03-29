@@ -244,6 +244,7 @@ input[type=text]::placeholder{color:#555}
   </div>
   <div class="player-list" id="waitPlayerList"></div>
   <button class="btn btn-green" id="startBtn" onclick="startGame()" style="display:none">🚔 Start Game</button>
+  <button class="btn btn-sm" onclick="leaveGame()" style="background:rgba(255,255,255,0.08);color:#888;margin-top:12px;">← Leave Room</button>
 
   <div class="waiting-chat" id="waitingChat" style="display:none">
     <div class="wc-label">💬 Chat</div>
@@ -269,6 +270,7 @@ input[type=text]::placeholder{color:#555}
 
   <div class="host-controls" id="hostControls" style="display:none">
     <button class="btn btn-red btn-sm" onclick="resetGame()">🔄 New Round</button>
+    <button class="btn btn-sm" onclick="leaveGame()" style="background:rgba(255,255,255,0.08);color:#888;">← Leave</button>
   </div>
   <div class="bingo-btn-area">
     <button class="bingo-btn" onclick="claimBingo()">🎉 BINGO!</button>
@@ -437,6 +439,21 @@ function joinRoom() {
 function startGame() { send({ type: 'startGame' }); }
 function resetGame() { send({ type: 'resetGame' }); }
 function claimBingo() { send({ type: 'claimBingo' }); }
+function leaveGame() {
+  clearSession();
+  if (ws) { ws.close(); ws = null; }
+  state = {};
+  myMarkedIndices = new Set();
+  allCards = {};
+  viewingPlayerId = null;
+  document.getElementById('waitingChat').style.display = 'none';
+  document.getElementById('waitChatMessages').innerHTML = '';
+  document.getElementById('chatMessages').innerHTML = '';
+  document.getElementById('hostControls').style.display = 'none';
+  document.getElementById('startBtn').style.display = 'none';
+  showScreen('lobby');
+  setTimeout(connect, 500);
+}
 
 function copyLink() {
   const code = state.roomCode || document.getElementById('waitRoomCode').textContent;
