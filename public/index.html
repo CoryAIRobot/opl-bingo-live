@@ -529,6 +529,12 @@ function handleMessage(msg) {
       if (msg.allCards) allCards = msg.allCards;
       renderScoreboard(msg.scoreboard);
       refreshCardViewer();
+      // Notify if it's someone else marking
+      if (msg.playerId !== state.playerId) {
+        const phrase = allCards[msg.playerId]?.card?.[msg.index] || '???';
+        toast(`${msg.emoji} ${msg.name} marked "${phrase}"`, 'info');
+        if (navigator.vibrate) navigator.vibrate(30);
+      }
       break;
 
     case 'bingo':
