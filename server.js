@@ -260,6 +260,21 @@ wss.on('connection', (ws) => {
         break;
       }
 
+      case 'chat': {
+        if (!currentRoom) return;
+        const sender = currentRoom.players.get(playerId);
+        if (!sender || !msg.text || !msg.text.trim()) return;
+        const text = msg.text.trim().slice(0, 300);
+        broadcast(currentRoom, {
+          type: 'chat',
+          name: sender.name,
+          emoji: sender.emoji,
+          text,
+          ts: Date.now()
+        });
+        break;
+      }
+
       case 'ping': {
         ws.send(JSON.stringify({ type: 'pong' }));
         break;
