@@ -111,7 +111,8 @@ function getRoomState(room, playerId) {
     scoreboard: getScoreboard(room),
     winners: room.winners,
     hostName: room.players.get(room.hostId)?.name || 'Host',
-    allCards: room.gameStarted ? getAllCards(room) : {}
+    allCards: room.gameStarted ? getAllCards(room) : {},
+    chatHistory: room.chatHistory || []
   };
 }
 
@@ -165,6 +166,7 @@ wss.on('connection', (ws) => {
           code, hostId: playerId,
           players: new Map(),
           gameStarted: false, winners: [],
+          chatHistory: [],
           createdAt: Date.now()
         };
         const card = makeCard();
@@ -186,6 +188,8 @@ wss.on('connection', (ws) => {
         const card = makeCard();
         room.players.set(playerId, { ws, name: msg.name || 'Player', emoji: msg.emoji || '🎲', card, hasBingo: false, markedIndices: new Set() });
         currentRoom = room;
+        const joinSys = { type: 'systemChat', text: `${msg.emoji || '🎲'} ${msg.name || 'Player'} joined the game`, ts: Date.now() };
+        room.chatHistory.push(joinSys);
         broadcast(room, { type: 'playerJoined', name: msg.name, emoji: msg.emoji || '🎲', scoreboard: getScoreboard(room) });
         ws.send(JSON.stringify({ type: 'welcome', playerId }));
         ws.send(JSON.stringify(getRoomState(room, playerId)));
@@ -293,13 +297,11 @@ wss.on('connection', (ws) => {
         const sender = currentRoom.players.get(playerId);
         if (!sender || !msg.text || !msg.text.trim()) return;
         const text = msg.text.trim().slice(0, 300);
-        broadcast(currentRoom, {
-          type: 'chat',
-          name: sender.name,
-          emoji: sender.emoji,
-          text,
-          ts: Date.now()
-        });
+        const chatMsg = { type: 'chat', name: sender.name, emoji: sender.emoji, text, ts: Date.now() };
+        currentRoom.chatHistory.push(chatMsg);
+        // Keep last 200 messages
+        if (currentRoom.chatHistory.length > 200) currentRoom.chatHistory.shift();
+        broadcast(currentRoom, chatMsg);
         break;
       }
 

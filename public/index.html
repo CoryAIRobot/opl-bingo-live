@@ -585,6 +585,12 @@ function sendChat() {
   input.focus();
 }
 
+function clearAllChats() {
+  document.getElementById('chatMessages').innerHTML = '';
+  document.getElementById('waitChatMessages').innerHTML = '';
+  document.getElementById('sideChatMessages').innerHTML = '';
+}
+
 function updateInlineChat(msg) {
   const el = document.getElementById('inlineChatLast');
   el.innerHTML = `
@@ -611,7 +617,7 @@ function sendSideChat() {
   input.focus();
 }
 
-function addChatMessage(msg) {
+function addChatMessage(msg, silent) {
   const time = new Date(msg.ts).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
   const html = `
     <span class="chat-emoji">${msg.emoji}</span>
@@ -648,7 +654,7 @@ function addChatMessage(msg) {
   sideChat.appendChild(div3);
   sideChat.scrollTop = sideChat.scrollHeight;
 
-  if (!chatOpen) {
+  if (!chatOpen && !silent) {
     unreadChat++;
     updateChatBadge();
     if (navigator.vibrate) navigator.vibrate(30);
@@ -740,6 +746,14 @@ function handleMessage(msg) {
       state = msg;
       myMarkedIndices = new Set(msg.markedIndices || []);
       saveSession(msg.roomCode, msg.playerId, msg.playerName, '');
+      // Replay chat history
+      if (msg.chatHistory && msg.chatHistory.length) {
+        clearAllChats();
+        msg.chatHistory.forEach(m => {
+          if (m.type === 'chat') addChatMessage(m, true);
+          else if (m.type === 'systemChat') addSystemChat(m.text);
+        });
+      }
       if (msg.allCards) allCards = msg.allCards;
       if (msg.gameStarted) {
         showScreen('game');
@@ -775,6 +789,10 @@ function handleMessage(msg) {
 
     case 'chat':
       addChatMessage(msg);
+      break;
+
+    case 'systemChat':
+      addSystemChat(msg.text);
       break;
 
     case 'gameStarted':
