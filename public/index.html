@@ -72,6 +72,42 @@ input[type=text]::placeholder{color:#555}
 @keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
 
 #game{padding:10px;gap:8px;padding-bottom:100px}
+
+/* Desktop: side-by-side layout */
+.game-layout{display:flex;gap:16px;width:100%;max-width:900px;align-items:flex-start}
+.game-left{flex:1;min-width:0;max-width:500px}
+.game-right{width:280px;flex-shrink:0;position:sticky;top:10px}
+
+/* Side chat panel (always visible on desktop) */
+.side-chat{background:var(--navy-light);border-radius:12px;border:1px solid #333;display:flex;flex-direction:column;height:calc(100dvh - 100px);max-height:600px;overflow:hidden}
+.side-chat .sc-header{font-family:'Oswald',sans-serif;font-size:0.85rem;color:var(--red-light);text-transform:uppercase;
+  letter-spacing:2px;padding:12px 14px;border-bottom:1px solid #333;text-align:center}
+.side-chat .sc-messages{flex:1;overflow-y:auto;padding:10px;display:flex;flex-direction:column;gap:6px}
+.side-chat .sc-msg{display:flex;gap:6px;align-items:flex-start}
+.side-chat .sc-msg .sc-emoji{font-size:0.85rem;flex-shrink:0;margin-top:1px}
+.side-chat .sc-msg .sc-bubble{background:var(--navy);border-radius:8px;padding:6px 10px;max-width:220px}
+.side-chat .sc-msg .sc-name{font-size:0.6rem;color:var(--red-light);font-weight:700;text-transform:uppercase;letter-spacing:0.5px}
+.side-chat .sc-msg .sc-text{font-size:0.78rem;color:#ddd;line-height:1.3;word-break:break-word;margin-top:1px}
+.side-chat .sc-msg .sc-time{font-size:0.5rem;color:#555;margin-top:2px}
+.side-chat .sc-msg.sc-system{justify-content:center}
+.side-chat .sc-msg.sc-system .sc-bubble{background:transparent;text-align:center;color:#555;font-size:0.65rem;font-style:italic;max-width:100%}
+.side-chat .sc-input{padding:8px;border-top:1px solid #333;display:flex;gap:6px}
+.side-chat .sc-input input{flex:1;padding:8px 10px;border-radius:8px;border:1.5px solid #333;background:var(--navy);
+  color:#fff;font-size:0.8rem;outline:none;min-width:0}
+.side-chat .sc-input input:focus{border-color:var(--red)}
+.side-chat .sc-input button{width:34px;height:34px;border-radius:8px;background:linear-gradient(135deg,var(--red),var(--red-light));
+  color:#fff;font-size:0.9rem;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+
+/* Mobile: hide side chat, keep inline chat */
+@media(max-width:740px){
+  .game-layout{flex-direction:column;align-items:center}
+  .game-left{max-width:500px;width:100%}
+  .game-right{display:none}
+  .inline-chat{display:flex !important}
+}
+@media(min-width:741px){
+  .inline-chat{display:none !important}
+}
 .game-header{display:flex;align-items:center;justify-content:space-between;width:100%;max-width:500px;padding:6px 0}
 .game-header .room-info{font-family:'Oswald',sans-serif;font-size:1rem;color:var(--red-light);letter-spacing:2px}
 .game-header .called-count{font-size:0.8rem;color:#888}
@@ -275,36 +311,53 @@ input[type=text]::placeholder{color:#555}
 
 <!-- GAME -->
 <div id="game" class="screen">
-  <div class="game-header">
+  <div class="game-header" style="width:100%;max-width:900px;">
     <span class="room-info" id="gameRoomInfo">OPL BINGO</span>
-    <span class="called-count" id="calledCount">0 called</span>
-  </div>
-  <div class="bingo-board">
-    <div class="bingo-letters"><span>B</span><span>I</span><span>N</span><span>G</span><span>O</span></div>
-    <div class="bingo-grid" id="bingoGrid"></div>
-  </div>
-  <div class="call-area">
-    <p>Tap a square when you hear it on the show!</p>
+    <span class="called-count" id="calledCount">0 marked</span>
   </div>
 
-  <!-- Inline chat bar -->
-  <div class="inline-chat" id="inlineChat">
-    <div class="inline-chat-last" id="inlineChatLast" onclick="toggleChat()">
-      <span class="inline-chat-placeholder">💬 No messages yet</span>
+  <div class="game-layout">
+    <!-- Left: Bingo Board -->
+    <div class="game-left">
+      <div class="bingo-board">
+        <div class="bingo-letters"><span>B</span><span>I</span><span>N</span><span>G</span><span>O</span></div>
+        <div class="bingo-grid" id="bingoGrid"></div>
+      </div>
+      <div class="call-area">
+        <p>Tap a square when you hear it on the show!</p>
+      </div>
+
+      <!-- Inline chat (mobile only) -->
+      <div class="inline-chat" id="inlineChat">
+        <div class="inline-chat-last" id="inlineChatLast" onclick="toggleChat()">
+          <span class="inline-chat-placeholder">💬 No messages yet</span>
+        </div>
+        <div class="inline-chat-input">
+          <input type="text" id="inlineChatInput" placeholder="Chat..." maxlength="300" autocomplete="off">
+          <button onclick="sendInlineChat()">➤</button>
+        </div>
+      </div>
+
+      <div class="host-controls" id="hostControls" style="display:none">
+        <button class="btn btn-red btn-sm" onclick="resetGame()">🔄 New Round</button>
+      </div>
+
+      <div style="text-align:center;margin-top:8px;">
+        <button class="btn btn-sm" onclick="leaveGame()" style="background:rgba(255,255,255,0.08);color:#888;">← Leave Game</button>
+      </div>
     </div>
-    <div class="inline-chat-input">
-      <input type="text" id="inlineChatInput" placeholder="Chat..." maxlength="300" autocomplete="off">
-      <button onclick="sendInlineChat()">➤</button>
+
+    <!-- Right: Live Chat (desktop) -->
+    <div class="game-right">
+      <div class="side-chat">
+        <div class="sc-header">💬 Live Chat</div>
+        <div class="sc-messages" id="sideChatMessages"></div>
+        <div class="sc-input">
+          <input type="text" id="sideChatInput" placeholder="Chat..." maxlength="300" autocomplete="off">
+          <button onclick="sendSideChat()">➤</button>
+        </div>
+      </div>
     </div>
-  </div>
-
-  <div style="text-align:center;margin-top:8px;">
-    <button class="btn btn-sm" onclick="leaveGame()" style="background:rgba(255,255,255,0.08);color:#888;">← Leave Game</button>
-  </div>
-
-  <div class="host-controls" id="hostControls" style="display:none">
-    <button class="btn btn-red btn-sm" onclick="resetGame()">🔄 New Round</button>
-    <button class="btn btn-sm" onclick="leaveGame()" style="background:rgba(255,255,255,0.08);color:#888;">← Leave</button>
   </div>
   <div class="bingo-btn-area">
     <button class="bingo-btn" onclick="claimBingo()">🎉 BINGO!</button>
@@ -549,6 +602,15 @@ function sendInlineChat() {
   input.value = '';
 }
 
+function sendSideChat() {
+  const input = document.getElementById('sideChatInput');
+  const text = input.value.trim();
+  if (!text) return;
+  send({ type: 'chat', text });
+  input.value = '';
+  input.focus();
+}
+
 function addChatMessage(msg) {
   const time = new Date(msg.ts).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
   const html = `
@@ -578,6 +640,14 @@ function addChatMessage(msg) {
   waitChat.appendChild(div2);
   waitChat.scrollTop = waitChat.scrollHeight;
 
+  // Add to side chat (desktop)
+  const sideChat = document.getElementById('sideChatMessages');
+  const div3 = document.createElement('div');
+  div3.className = 'sc-msg';
+  div3.innerHTML = `<span class="sc-emoji">${msg.emoji}</span><div class="sc-bubble"><div class="sc-name">${msg.name}</div><div class="sc-text">${escapeHtml(msg.text)}</div><div class="sc-time">${time}</div></div>`;
+  sideChat.appendChild(div3);
+  sideChat.scrollTop = sideChat.scrollHeight;
+
   if (!chatOpen) {
     unreadChat++;
     updateChatBadge();
@@ -601,6 +671,14 @@ function addSystemChat(text) {
   div2.innerHTML = html;
   waitChat.appendChild(div2);
   waitChat.scrollTop = waitChat.scrollHeight;
+
+  // Side chat
+  const sideChat = document.getElementById('sideChatMessages');
+  const div3 = document.createElement('div');
+  div3.className = 'sc-msg sc-system';
+  div3.innerHTML = `<div class="sc-bubble">${text}</div>`;
+  sideChat.appendChild(div3);
+  sideChat.scrollTop = sideChat.scrollHeight;
 }
 
 function updateChatBadge() {
@@ -627,6 +705,9 @@ document.getElementById('waitChatInput').addEventListener('keydown', e => {
 });
 document.getElementById('inlineChatInput').addEventListener('keydown', e => {
   if (e.key === 'Enter') sendInlineChat();
+});
+document.getElementById('sideChatInput').addEventListener('keydown', e => {
+  if (e.key === 'Enter') sendSideChat();
 });
 
 // ── Message Handler ──
