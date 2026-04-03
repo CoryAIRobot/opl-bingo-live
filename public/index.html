@@ -223,10 +223,16 @@ input[type=text]::placeholder{color:#555}
 .chat-input-area{padding:10px 12px;border-top:1px solid #333;display:flex;gap:8px;
   padding-bottom:max(10px,env(safe-area-inset-bottom))}
 .chat-input-area input{flex:1;padding:10px 14px;border-radius:10px;border:2px solid #333;background:var(--navy-light);
-  color:#fff;font-size:0.9rem;outline:none}
+  color:#fff;font-size:0.9rem;outline:none;min-width:0}
 .chat-input-area input:focus{border-color:var(--red)}
 .chat-input-area button{width:42px;height:42px;border-radius:10px;background:linear-gradient(135deg,var(--red),var(--red-light));
   color:#fff;font-size:1.1rem;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.chat-input-area .img-btn{background:rgba(255,255,255,0.1);font-size:1.2rem}
+.chat-img{max-width:200px;max-height:200px;border-radius:8px;margin-top:4px;cursor:pointer}
+.chat-img-full{position:fixed;inset:0;background:rgba(0,0,0,0.9);z-index:400;display:none;align-items:center;justify-content:center;cursor:pointer}
+.chat-img-full.active{display:flex}
+.chat-img-full img{max-width:90vw;max-height:90vh;border-radius:8px}
+.sc-msg .chat-img{max-width:160px;max-height:160px}
 
 .toast{position:fixed;top:20px;left:50%;transform:translateX(-50%);z-index:300;
   padding:12px 24px;border-radius:12px;font-weight:700;font-size:0.9rem;
@@ -304,6 +310,8 @@ input[type=text]::placeholder{color:#555}
     <div class="wc-messages" id="waitChatMessages"></div>
     <div class="wc-input-area">
       <input type="text" id="waitChatInput" placeholder="Say something..." maxlength="300" autocomplete="off">
+      <button class="img-btn" onclick="document.getElementById('waitFileInput').click()">📷</button>
+      <input type="file" id="waitFileInput" accept="image/*" style="display:none" onchange="sendImageFromInput(this)">
       <button onclick="sendChat()">➤</button>
     </div>
   </div>
@@ -334,6 +342,8 @@ input[type=text]::placeholder{color:#555}
         </div>
         <div class="inline-chat-input">
           <input type="text" id="inlineChatInput" placeholder="Chat..." maxlength="300" autocomplete="off">
+          <button class="img-btn" onclick="document.getElementById('inlineFileInput').click()">📷</button>
+          <input type="file" id="inlineFileInput" accept="image/*" style="display:none" onchange="sendImageFromInput(this)">
           <button onclick="sendInlineChat()">➤</button>
         </div>
       </div>
@@ -354,6 +364,8 @@ input[type=text]::placeholder{color:#555}
         <div class="sc-messages" id="sideChatMessages"></div>
         <div class="sc-input">
           <input type="text" id="sideChatInput" placeholder="Chat..." maxlength="300" autocomplete="off">
+          <button class="img-btn" onclick="document.getElementById('sideFileInput').click()">📷</button>
+          <input type="file" id="sideFileInput" accept="image/*" style="display:none" onchange="sendImageFromInput(this)">
           <button onclick="sendSideChat()">➤</button>
         </div>
       </div>
@@ -372,6 +384,8 @@ input[type=text]::placeholder{color:#555}
     <div class="chat-messages" id="chatMessages"></div>
     <div class="chat-input-area">
       <input type="text" id="chatInput" placeholder="Say something..." maxlength="300" autocomplete="off">
+      <button class="img-btn" onclick="document.getElementById('chatFileInput').click()">📷</button>
+      <input type="file" id="chatFileInput" accept="image/*" style="display:none" onchange="sendImageFromInput(this)">
       <button onclick="sendChat()">➤</button>
     </div>
   </div>
@@ -393,6 +407,11 @@ input[type=text]::placeholder{color:#555}
     <div class="viewer-grid" id="viewerGrid"></div>
     <div class="card-viewer-footer">Live view — updates in real-time</div>
   </div>
+</div>
+
+<!-- Fullscreen Image Viewer -->
+<div class="chat-img-full" id="imgFull" onclick="this.classList.remove('active')">
+  <img id="imgFullSrc" src="">
 </div>
 
 <!-- Winner -->
@@ -593,10 +612,11 @@ function clearAllChats() {
 
 function updateInlineChat(msg) {
   const el = document.getElementById('inlineChatLast');
+  const preview = msg.image ? '📷 Photo' : escapeHtml(msg.text);
   el.innerHTML = `
     <span class="inline-msg-emoji">${msg.emoji}</span>
     <span class="inline-msg-name">${msg.name}</span>
-    <span class="inline-msg-text">${escapeHtml(msg.text)}</span>
+    <span class="inline-msg-text">${preview}</span>
     <span class="inline-chat-expand">💬 open</span>`;
 }
 
@@ -619,11 +639,14 @@ function sendSideChat() {
 
 function addChatMessage(msg, silent) {
   const time = new Date(msg.ts).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
+  const imgHtml = msg.image ? `<img class="chat-img" src="${msg.image}" onclick="showFullImage(this.src)">` : '';
+  const textHtml = msg.text ? `<div class="chat-text">${escapeHtml(msg.text)}</div>` : '';
   const html = `
     <span class="chat-emoji">${msg.emoji}</span>
     <div class="chat-bubble">
       <div class="chat-name">${msg.name}</div>
-      <div class="chat-text">${escapeHtml(msg.text)}</div>
+      ${textHtml}
+      ${imgHtml}
       <div class="chat-time">${time}</div>
     </div>`;
 
@@ -650,7 +673,9 @@ function addChatMessage(msg, silent) {
   const sideChat = document.getElementById('sideChatMessages');
   const div3 = document.createElement('div');
   div3.className = 'sc-msg';
-  div3.innerHTML = `<span class="sc-emoji">${msg.emoji}</span><div class="sc-bubble"><div class="sc-name">${msg.name}</div><div class="sc-text">${escapeHtml(msg.text)}</div><div class="sc-time">${time}</div></div>`;
+  const scImgHtml = msg.image ? `<img class="chat-img" src="${msg.image}" onclick="showFullImage(this.src)">` : '';
+  const scTextHtml = msg.text ? `<div class="sc-text">${escapeHtml(msg.text)}</div>` : '';
+  div3.innerHTML = `<span class="sc-emoji">${msg.emoji}</span><div class="sc-bubble"><div class="sc-name">${msg.name}</div>${scTextHtml}${scImgHtml}<div class="sc-time">${time}</div></div>`;
   sideChat.appendChild(div3);
   sideChat.scrollTop = sideChat.scrollHeight;
 
@@ -701,6 +726,38 @@ function escapeHtml(str) {
   const div = document.createElement('div');
   div.textContent = str;
   return div.innerHTML;
+}
+
+function showFullImage(src) {
+  document.getElementById('imgFullSrc').src = src;
+  document.getElementById('imgFull').classList.add('active');
+}
+
+function sendImageFromInput(input) {
+  const file = input.files[0];
+  if (!file) return;
+  input.value = ''; // reset so same file can be re-sent
+  // Resize to max 800px and compress
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    const img = new Image();
+    img.onload = () => {
+      const MAX = 800;
+      let w = img.width, h = img.height;
+      if (w > MAX || h > MAX) {
+        if (w > h) { h = Math.round(h * MAX / w); w = MAX; }
+        else { w = Math.round(w * MAX / h); h = MAX; }
+      }
+      const canvas = document.createElement('canvas');
+      canvas.width = w; canvas.height = h;
+      canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+      const dataUrl = canvas.toDataURL('image/jpeg', 0.7);
+      send({ type: 'chat', text: '', image: dataUrl });
+      toast('Photo sent! 📷', 'info');
+    };
+    img.src = e.target.result;
+  };
+  reader.readAsDataURL(file);
 }
 
 document.getElementById('chatInput').addEventListener('keydown', e => {

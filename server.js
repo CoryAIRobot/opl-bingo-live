@@ -295,11 +295,13 @@ wss.on('connection', (ws) => {
       case 'chat': {
         if (!currentRoom) return;
         const sender = currentRoom.players.get(playerId);
-        if (!sender || !msg.text || !msg.text.trim()) return;
-        const text = msg.text.trim().slice(0, 300);
+        if (!sender) return;
+        const text = (msg.text || '').trim().slice(0, 300);
+        const image = msg.image || null; // base64 data URL
+        if (!text && !image) return;
         const chatMsg = { type: 'chat', name: sender.name, emoji: sender.emoji, text, ts: Date.now() };
+        if (image) chatMsg.image = image;
         currentRoom.chatHistory.push(chatMsg);
-        // Keep last 200 messages
         if (currentRoom.chatHistory.length > 200) currentRoom.chatHistory.shift();
         broadcast(currentRoom, chatMsg);
         break;
