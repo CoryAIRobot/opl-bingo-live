@@ -98,7 +98,19 @@ input[type=text]::placeholder{color:#555}
 .side-chat .sc-input button{width:34px;height:34px;border-radius:8px;background:linear-gradient(135deg,var(--red),var(--red-light));
   color:#fff;font-size:0.9rem;display:flex;align-items:center;justify-content:center;flex-shrink:0}
 
-/* Mobile: hide side chat, keep inline chat */
+/* Side scoreboard (desktop) */
+.side-scoreboard{background:var(--navy-light);border-radius:12px;border:1px solid #333;padding:12px;margin-top:10px}
+.side-scoreboard .ss-header{font-family:'Oswald',sans-serif;font-size:0.85rem;color:var(--gold);text-transform:uppercase;
+  letter-spacing:2px;text-align:center;margin-bottom:10px}
+.side-scoreboard .sb-row{display:flex;align-items:center;gap:8px;padding:8px;border-radius:8px;margin-bottom:4px;background:var(--navy);font-size:0.85rem}
+.side-scoreboard .sb-row .rank{font-family:'Oswald',sans-serif;font-size:0.9rem;color:#555;width:22px}
+.side-scoreboard .sb-row .name{flex:1;font-weight:600}
+.side-scoreboard .sb-row .peek{font-size:0.6rem;color:#666;text-transform:uppercase;letter-spacing:1px}
+.side-scoreboard .sb-row .count{font-family:'Oswald',sans-serif;font-size:1rem;color:var(--green)}
+.side-scoreboard .sb-row.winner{border:1px solid var(--gold);background:rgba(255,215,0,0.05)}
+.side-scoreboard .sb-row.winner .name::after{content:' 🏆'}
+
+/* Mobile: hide side panel, keep inline chat */
 @media(max-width:740px){
   .game-layout{flex-direction:column;align-items:center}
   .game-left{max-width:500px;width:100%}
@@ -107,6 +119,8 @@ input[type=text]::placeholder{color:#555}
 }
 @media(min-width:741px){
   .inline-chat{display:none !important}
+  .chat-toggle{display:none !important}
+  .scoreboard-toggle{display:none !important}
 }
 .game-header{display:flex;align-items:center;justify-content:space-between;width:100%;max-width:500px;padding:6px 0}
 .game-header .room-info{font-family:'Oswald',sans-serif;font-size:1rem;color:var(--red-light);letter-spacing:2px}
@@ -357,9 +371,9 @@ input[type=text]::placeholder{color:#555}
       </div>
     </div>
 
-    <!-- Right: Live Chat (desktop) -->
+    <!-- Right: Live Chat + Scoreboard (desktop) -->
     <div class="game-right">
-      <div class="side-chat">
+      <div class="side-chat" style="max-height:400px">
         <div class="sc-header">💬 Live Chat</div>
         <div class="sc-messages" id="sideChatMessages"></div>
         <div class="sc-input">
@@ -368,6 +382,10 @@ input[type=text]::placeholder{color:#555}
           <input type="file" id="sideFileInput" accept="image/*" style="display:none" onchange="sendImageFromInput(this)">
           <button onclick="sendSideChat()">➤</button>
         </div>
+      </div>
+      <div class="side-scoreboard">
+        <div class="ss-header">🏆 Scoreboard</div>
+        <div id="sideScoreList"></div>
       </div>
     </div>
   </div>
@@ -929,11 +947,15 @@ function markSquare(index) {
 
 function renderScoreboard(sb) {
   if (!sb) return;
-  document.getElementById('scoreList').innerHTML = sb.map((p, i) => `
+  const html = sb.map((p, i) => `
     <div class="sb-row${p.hasBingo ? ' winner' : ''}" onclick="viewCard('${p.id}')">
       <span class="rank">#${i + 1}</span><span>${p.emoji}</span>
       <span class="name">${p.name}</span><span class="peek">👁 peek</span><span class="count">${p.marked}/25</span>
     </div>`).join('');
+  document.getElementById('scoreList').innerHTML = html;
+  // Also update side scoreboard (desktop)
+  const sideEl = document.getElementById('sideScoreList');
+  if (sideEl) sideEl.innerHTML = html;
 }
 
 function viewCard(playerId) {
