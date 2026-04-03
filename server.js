@@ -232,8 +232,10 @@ wss.on('connection', (ws) => {
         const index = msg.index;
         if (typeof index !== 'number' || index < 0 || index > 24 || index === 12) return;
         if (!player.markedIndices) player.markedIndices = new Set();
-        if (player.markedIndices.has(index)) return; // already marked
-        player.markedIndices.add(index);
+        // Toggle: mark or unmark
+        const wasMarked = player.markedIndices.has(index);
+        if (wasMarked) player.markedIndices.delete(index);
+        else player.markedIndices.add(index);
         // Notify everyone of updated scoreboard + cards
         broadcast(currentRoom, {
           type: 'playerMarked',
@@ -241,6 +243,7 @@ wss.on('connection', (ws) => {
           name: player.name,
           emoji: player.emoji,
           index,
+          marked: !wasMarked,
           scoreboard: getScoreboard(currentRoom),
           allCards: getAllCards(currentRoom)
         });

@@ -887,7 +887,8 @@ function handleMessage(msg) {
       refreshCardViewer();
       // Notify everyone including the active user
       { const phrase = allCards[msg.playerId]?.card?.[msg.index] || '???';
-        toast(`${msg.emoji} ${msg.name} marked "${phrase}"`, 'info');
+        const action = msg.marked ? 'marked' : 'unmarked';
+        toast(`${msg.emoji} ${msg.name} ${action} "${phrase}"`, 'info');
         if (navigator.vibrate) navigator.vibrate(30);
       }
       break;
@@ -945,8 +946,9 @@ function renderBoard(justMarkedIndex) {
 function markSquare(index) {
   const phrase = state.card[index];
   if (!phrase || phrase === '__FREE__') return;
-  if (myMarkedIndices.has(index)) return; // already marked
-  myMarkedIndices.add(index);
+  // Toggle mark/unmark
+  if (myMarkedIndices.has(index)) myMarkedIndices.delete(index);
+  else myMarkedIndices.add(index);
   renderBoard(index);
   send({ type: 'markSquare', index });
   if (navigator.vibrate) navigator.vibrate(30);
