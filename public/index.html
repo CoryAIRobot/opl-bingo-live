@@ -1025,6 +1025,33 @@ if (params.has('reset')) {
 }
 if (params.get('room')) document.getElementById('joinCode').value = params.get('room');
 
+// Wake-up reconnect: when phone screen wakes up or tab becomes visible, reconnect immediately
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'visible') {
+    // If we have a session but WS is closed or not connected, reconnect right away
+    if (state.roomCode && state.playerId && (!ws || ws.readyState === WebSocket.CLOSED || ws.readyState === WebSocket.CLOSING)) {
+      console.log('Screen woke up — reconnecting immediately');
+      clearTimeout(reconnectTimer);
+      connect();
+    }
+  }
+});
+
+// Also reconnect on window focus (desktop/browser tab switch)
+window.addEventListener('focus', () => {
+  if (state.roomCode && state.playerId && (!ws || ws.readyState === WebSocket.CLOSED || ws.readyState === WebSocket.CLOSING)) {
+    clearTimeout(reconnectTimer);
+    connect();
+  }
+});
+
+// Keep-alive ping every 25 seconds to prevent connection timeout
+setInterval(() => {
+  if (ws && ws.readyState === WebSocket.OPEN) {
+    ws.send(JSON.stringify({ type: 'ping' }));
+  }
+}, 25000);
+
 // Enter key
 document.getElementById('playerName').addEventListener('keydown', e => {
   if (e.key === 'Enter') { document.getElementById('joinCode').value ? joinRoom() : createRoom(); }

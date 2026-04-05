@@ -334,9 +334,9 @@ wss.on('connection', (ws) => {
 setInterval(() => {
   const now = Date.now();
   for (const [code, room] of rooms) {
-    // Remove players disconnected > 5 min
+    // Remove players disconnected > 2 hours (long enough for a full OPL episode)
     for (const [pid, p] of room.players) {
-      if (!p.ws && p.disconnectedAt && now - p.disconnectedAt > 5 * 60 * 1000) {
+      if (!p.ws && p.disconnectedAt && now - p.disconnectedAt > 2 * 60 * 60 * 1000) {
         room.players.delete(pid);
         broadcast(room, { type: 'playerLeft', name: p.name, scoreboard: getScoreboard(room) });
         // Transfer host if needed
@@ -347,8 +347,8 @@ setInterval(() => {
         }
       }
     }
-    // Delete empty or stale rooms
-    if (room.players.size === 0 || now - room.createdAt > 12 * 60 * 60 * 1000) {
+    // Delete empty or stale rooms (keep for 24 hours)
+    if (room.players.size === 0 || now - room.createdAt > 24 * 60 * 60 * 1000) {
       rooms.delete(code);
     }
   }
