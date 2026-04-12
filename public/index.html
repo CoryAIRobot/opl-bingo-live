@@ -235,6 +235,8 @@ input[type=text]::placeholder{color:#555}
   background:var(--red);color:#fff;font-size:0.6rem;font-weight:700;display:none;
   align-items:center;justify-content:center}
 .chat-badge.show{display:flex}
+.chat-backdrop{position:fixed;inset:0;background:rgba(0,0,0,0.45);z-index:194;display:none}
+.chat-backdrop.open{display:block}
 .chat-panel{position:fixed;top:0;right:-340px;width:320px;height:100dvh;background:var(--navy);
   border-left:2px solid #333;z-index:195;transition:right .3s ease;display:flex;flex-direction:column}
 .chat-panel.open{right:0}
@@ -426,10 +428,11 @@ input[type=text]::placeholder{color:#555}
   </div>
   <button class="chat-toggle" onclick="toggleChat()">💬<span class="chat-badge" id="chatBadge">0</span></button>
   <button class="scoreboard-toggle" onclick="toggleScoreboard()">📊</button>
+  <div class="chat-backdrop" id="chatBackdrop" onclick="toggleChat(false)"></div>
   <div class="chat-panel" id="chatPanel">
     <div class="chat-header">
       <h3>💬 Chat</h3>
-      <button class="chat-close-btn" onclick="toggleChat()" aria-label="Close chat">Close ✕</button>
+      <button class="chat-close-btn" onclick="toggleChat(false)" aria-label="Back to bingo">← Back to Bingo</button>
     </div>
     <div class="chat-messages" id="chatMessages"></div>
     <div class="chat-input-area">
@@ -630,15 +633,18 @@ function copyLink() {
 function toggleScoreboard() {
   document.getElementById('scorePanel').classList.toggle('open');
   document.getElementById('chatPanel').classList.remove('open');
+  document.getElementById('chatBackdrop').classList.remove('open');
+  chatOpen = false;
 }
 
 // ── Chat ──
 let chatOpen = false;
 let unreadChat = 0;
 
-function toggleChat() {
-  chatOpen = !chatOpen;
+function toggleChat(forceOpen) {
+  chatOpen = typeof forceOpen === 'boolean' ? forceOpen : !chatOpen;
   document.getElementById('chatPanel').classList.toggle('open', chatOpen);
+  document.getElementById('chatBackdrop').classList.toggle('open', chatOpen);
   document.getElementById('scorePanel').classList.remove('open');
   if (chatOpen) {
     unreadChat = 0;
