@@ -185,6 +185,21 @@ wss.on('connection', (ws) => {
         const room = rooms.get(code);
         if (!room) { ws.send(JSON.stringify({ type: 'error', message: 'Room not found! Check your code.' })); return; }
         if (room.players.size >= 20 && !room.players.has(playerId)) { ws.send(JSON.stringify({ type: 'error', message: 'Room is full (max 20).' })); return; }
+
+        const existing = room.players.get(playerId);
+        if (existing) {
+          existing.ws = ws;
+          existing.disconnectedAt = null;
+          if (msg.name) existing.name = msg.name;
+          if (msg.emoji) existing.emoji = msg.emoji;
+          currentRoom = room;
+          ws.send(JSON.stringify({ type: 'welcome', playerId }));
+          ws.send(JSON.stringify(getRoomState(room, playerId)));
+          broadcast(room, { type: 'playerRejoined', name: existing.name, emoji: existing.emoji, scoreboard: getScoreboard(room) });
+          console.log(`${existing.name} resumed room ${code} without losing card`);
+          break;
+        }
+
         const card = makeCard();
         room.players.set(playerId, { ws, name: msg.name || 'Player', emoji: msg.emoji || '🎲', card, hasBingo: false, markedIndices: new Set() });
         currentRoom = room;
@@ -307,6 +322,23 @@ wss.on('connection', (ws) => {
         currentRoom.chatHistory.push(chatMsg);
         if (currentRoom.chatHistory.length > 200) currentRoom.chatHistory.shift();
         broadcast(currentRoom, chatMsg);
+        break;
+      }
+
+      case 'reaction': {
+        if (!currentRoom) return;
+        const sender = currentRoom.players.get(playerId);
+        if (!sender) return;
+        const reaction = String(msg.emoji || '').trim();
+        if (!reaction) return;
+        broadcast(currentRoom, {
+          type: 'reaction',
+          playerId,
+          name: sender.name,
+          emoji: sender.emoji,
+          reaction,
+          ts: Date.now()
+        });
         break;
       }
 
