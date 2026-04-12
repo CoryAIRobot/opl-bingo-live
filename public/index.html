@@ -122,9 +122,12 @@ input[type=text]::placeholder{color:#555}
   .chat-toggle{display:none !important}
   .scoreboard-toggle{display:none !important}
 }
-.game-header{display:flex;align-items:center;justify-content:space-between;width:100%;max-width:1100px;padding:4px 0}
+.game-header{display:flex;flex-direction:column;gap:8px;width:100%;max-width:900px;padding:4px 0}
+.game-header-top{display:flex;align-items:center;justify-content:space-between;gap:8px;width:100%}
 .game-header .room-info{font-family:'Oswald',sans-serif;font-size:1rem;color:var(--red-light);letter-spacing:2px}
 .game-header .called-count{font-size:0.8rem;color:#888}
+.reaction-bar.game-reactions{justify-content:flex-start;width:100%;max-width:none;margin-top:0}
+.reaction-bar.game-reactions button{min-width:38px;height:38px;font-size:1.1rem}
 .bingo-board{width:100%;max-width:650px;border-radius:12px;overflow:hidden;border:2px solid var(--red);background:var(--navy-light)}
 .bingo-letters{display:grid;grid-template-columns:repeat(5,minmax(0,1fr))}
 .bingo-letters span{font-family:'Oswald',sans-serif;font-size:1.4rem;font-weight:700;text-align:center;padding:8px 0;background:var(--red);color:#fff}
@@ -334,14 +337,6 @@ input[type=text]::placeholder{color:#555}
     <span class="status-dot connecting"></span>Connecting...
   </div>
   <div class="player-list" id="waitPlayerList"></div>
-  <div class="reaction-bar" id="waitingReactionBar">
-    <button onclick="sendReaction('😀')" title="Smile">😀</button>
-    <button onclick="sendReaction('😂')" title="Laugh">😂</button>
-    <button onclick="sendReaction('❤️')" title="Love">❤️</button>
-    <button onclick="sendReaction('👏')" title="Clap">👏</button>
-    <button onclick="sendReaction('🎉')" title="Celebrate">🎉</button>
-    <button onclick="sendReaction('🚔')" title="OPL">🚔</button>
-  </div>
   <button class="btn btn-green" id="startBtn" onclick="startGame()" style="display:none">🚔 Start Game</button>
   <button class="btn btn-sm" onclick="leaveGame()" style="background:rgba(255,255,255,0.08);color:#888;margin-top:12px;">← Leave Room</button>
 
@@ -359,9 +354,19 @@ input[type=text]::placeholder{color:#555}
 
 <!-- GAME -->
 <div id="game" class="screen">
-  <div class="game-header" style="width:100%;max-width:900px;">
-    <span class="room-info" id="gameRoomInfo">OPL BINGO</span>
-    <span class="called-count" id="calledCount">0 marked</span>
+  <div class="game-header">
+    <div class="game-header-top">
+      <span class="room-info" id="gameRoomInfo">OPL BINGO</span>
+      <span class="called-count" id="calledCount">0 marked</span>
+    </div>
+    <div class="reaction-bar game-reactions" id="reactionBar">
+      <button onclick="sendReaction('😀')" title="Smile">😀</button>
+      <button onclick="sendReaction('😂')" title="Laugh">😂</button>
+      <button onclick="sendReaction('❤️')" title="Love">❤️</button>
+      <button onclick="sendReaction('👏')" title="Clap">👏</button>
+      <button onclick="sendReaction('🎉')" title="Celebrate">🎉</button>
+      <button onclick="sendReaction('🚔')" title="OPL">🚔</button>
+    </div>
   </div>
 
   <div class="game-layout">
@@ -390,15 +395,6 @@ input[type=text]::placeholder{color:#555}
 
       <div class="bingo-btn-area">
         <button class="bingo-btn" onclick="claimBingo()">🎉 BINGO!</button>
-      </div>
-
-      <div class="reaction-bar" id="reactionBar">
-        <button onclick="sendReaction('😀')" title="Smile">😀</button>
-        <button onclick="sendReaction('😂')" title="Laugh">😂</button>
-        <button onclick="sendReaction('❤️')" title="Love">❤️</button>
-        <button onclick="sendReaction('👏')" title="Clap">👏</button>
-        <button onclick="sendReaction('🎉')" title="Celebrate">🎉</button>
-        <button onclick="sendReaction('🚔')" title="OPL">🚔</button>
       </div>
 
       <div class="host-controls" id="hostControls" style="display:none">
