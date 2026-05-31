@@ -46,7 +46,21 @@ const PHRASES = [
   "Domestic Dispute",
   "Hood Chase",
   "Meth Pipe",
-  "ATV/Dirt Bike Chase"
+  "ATV/Dirt Bike Chase",
+  "Dodge Charger",
+  "Cocaine",
+  "Weed",
+  "Alcohol found in vehicle",
+  "Fentanyl",
+  "Talks themselves into jail",
+  "Camo Pants/Shorts",
+  "Triple Play",
+  "Drug Test Kit",
+  "Cops go off-roading",
+  "Street Racers",
+  "Something is on Fire!",
+  "Broken down vehicle",
+  "Cigarette smoker"
 ];
 
 // ── Helpers ──
