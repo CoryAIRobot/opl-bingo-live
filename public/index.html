@@ -267,6 +267,19 @@ input[type=text]::placeholder{color:#555}
 .chat-img-full img{max-width:90vw;max-height:90vh;border-radius:8px}
 .sc-msg .chat-img{max-width:160px;max-height:160px}
 
+/* Chat reactions (thumbs up/down) */
+.chat-reactions{display:flex;gap:4px;margin-top:4px}
+.chat-reactions button{background:rgba(255,255,255,0.06);border:1px solid #333;border-radius:6px;padding:2px 6px;
+  font-size:0.7rem;cursor:pointer;color:#888;display:flex;align-items:center;gap:2px;transition:all .15s}
+.chat-reactions button:active{transform:scale(0.92)}
+.chat-reactions button.voted{border-color:var(--gold);background:rgba(255,215,0,0.1);color:var(--gold)}
+.chat-reactions button .count{font-size:0.6rem}
+.sc-reactions{display:flex;gap:3px;margin-top:3px}
+.sc-reactions button{background:rgba(255,255,255,0.06);border:1px solid #333;border-radius:5px;padding:1px 5px;
+  font-size:0.6rem;cursor:pointer;color:#888;display:flex;align-items:center;gap:2px;transition:all .15s}
+.sc-reactions button:active{transform:scale(0.92)}
+.sc-reactions button.voted{border-color:var(--gold);background:rgba(255,215,0,0.1);color:var(--gold)}
+
 .toast{position:fixed;top:20px;left:50%;transform:translateX(-50%);z-index:300;
   padding:12px 24px;border-radius:12px;font-weight:700;font-size:0.9rem;
   animation:slideDown .3s ease;pointer-events:none;max-width:90vw;text-align:center}
@@ -716,6 +729,16 @@ function addChatMessage(msg, silent) {
   const time = new Date(msg.ts).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
   const imgHtml = msg.image ? `<img class="chat-img" src="${msg.image}" onclick="showFullImage(this.src)">` : '';
   const textHtml = msg.text ? `<div class="chat-text">${escapeHtml(msg.text)}</div>` : '';
+  const msgId = msg.msgId || '';
+  const upCount = msg.reactions?.up || 0;
+  const downCount = msg.reactions?.down || 0;
+  const upVoted = msg.yourVote === 'up' ? ' voted' : '';
+  const downVoted = msg.yourVote === 'down' ? ' voted' : '';
+  const reactionsHtml = msgId ? `
+      <div class="chat-reactions" data-msgid="${msgId}">
+        <button class="react-up${upVoted}" onclick="reactToChat('${msgId}','up')">👍 <span class="count">${upCount || ''}</span></button>
+        <button class="react-down${downVoted}" onclick="reactToChat('${msgId}','down')">👎 <span class="count">${downCount || ''}</span></button>
+      </div>` : '';
   const html = `
     <span class="chat-emoji">${msg.emoji}</span>
     <div class="chat-bubble">
@@ -723,6 +746,7 @@ function addChatMessage(msg, silent) {
       ${textHtml}
       ${imgHtml}
       <div class="chat-time">${time}</div>
+      ${reactionsHtml}
     </div>`;
 
   // Update inline chat preview
@@ -732,6 +756,7 @@ function addChatMessage(msg, silent) {
   const gameChat = document.getElementById('chatMessages');
   const div1 = document.createElement('div');
   div1.className = 'chat-msg';
+  if (msgId) div1.dataset.msgid = msgId;
   div1.innerHTML = html;
   gameChat.appendChild(div1);
   gameChat.scrollTop = gameChat.scrollHeight;
@@ -740,6 +765,7 @@ function addChatMessage(msg, silent) {
   const waitChat = document.getElementById('waitChatMessages');
   const div2 = document.createElement('div');
   div2.className = 'chat-msg';
+  if (msgId) div2.dataset.msgid = msgId;
   div2.innerHTML = html;
   waitChat.appendChild(div2);
   waitChat.scrollTop = waitChat.scrollHeight;
@@ -748,9 +774,15 @@ function addChatMessage(msg, silent) {
   const sideChat = document.getElementById('sideChatMessages');
   const div3 = document.createElement('div');
   div3.className = 'sc-msg';
+  if (msgId) div3.dataset.msgid = msgId;
   const scImgHtml = msg.image ? `<img class="chat-img" src="${msg.image}" onclick="showFullImage(this.src)">` : '';
   const scTextHtml = msg.text ? `<div class="sc-text">${escapeHtml(msg.text)}</div>` : '';
-  div3.innerHTML = `<span class="sc-emoji">${msg.emoji}</span><div class="sc-bubble"><div class="sc-name">${msg.name}</div>${scTextHtml}${scImgHtml}<div class="sc-time">${time}</div></div>`;
+  const scReactionsHtml = msgId ? `
+    <div class="sc-reactions" data-msgid="${msgId}">
+      <button class="react-up${upVoted}" onclick="reactToChat('${msgId}','up')">👍 <span class="count">${upCount || ''}</span></button>
+      <button class="react-down${downVoted}" onclick="reactToChat('${msgId}','down')">👎 <span class="count">${downCount || ''}</span></button>
+    </div>` : '';
+  div3.innerHTML = `<span class="sc-emoji">${msg.emoji}</span><div class="sc-bubble"><div class="sc-name">${msg.name}</div>${scTextHtml}${scImgHtml}<div class="sc-time">${time}</div>${scReactionsHtml}</div>`;
   sideChat.appendChild(div3);
   sideChat.scrollTop = sideChat.scrollHeight;
 
@@ -822,6 +854,26 @@ function escapeHtml(str) {
 function showFullImage(src) {
   document.getElementById('imgFullSrc').src = src;
   document.getElementById('imgFull').classList.add('active');
+}
+
+function reactToChat(msgId, reaction) {
+  send({ type: 'chatReaction', msgId, reaction });
+}
+
+function updateChatReactions(msgId, reactions, yourVote) {
+  // Update all instances of this message across all chat panels
+  document.querySelectorAll(`[data-msgid="${msgId}"] .chat-reactions, [data-msgid="${msgId}"] .sc-reactions`).forEach(container => {
+    const upBtn = container.querySelector('.react-up');
+    const downBtn = container.querySelector('.react-down');
+    if (upBtn) {
+      upBtn.querySelector('.count').textContent = reactions.up || '';
+      upBtn.classList.toggle('voted', yourVote === 'up');
+    }
+    if (downBtn) {
+      downBtn.querySelector('.count').textContent = reactions.down || '';
+      downBtn.classList.toggle('voted', yourVote === 'down');
+    }
+  });
 }
 
 function sendImageFromInput(input) {
@@ -944,6 +996,10 @@ function handleMessage(msg) {
 
     case 'reaction':
       burstReaction(msg.reaction);
+      break;
+
+    case 'chatReaction':
+      updateChatReactions(msg.msgId, msg.reactions, msg.yourVote);
       break;
 
     case 'systemChat':

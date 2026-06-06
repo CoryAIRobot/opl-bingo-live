@@ -126,6 +126,17 @@ function getAllCards(room) {
 
 function getRoomState(room, playerId) {
   const player = room.players.get(playerId);
+  // Build chat history with reaction counts and this player's votes
+  const chatHistoryWithReactions = (room.chatHistory || []).map(m => {
+    if (!m.msgId) return m; // system messages
+    const reactions = m.reactions || {};
+    const upList = reactions.up || [];
+    const downList = reactions.down || [];
+    const enriched = { ...m, reactions: { up: upList.length, down: downList.length } };
+    if (upList.includes(playerId)) enriched.yourVote = 'up';
+    else if (downList.includes(playerId)) enriched.yourVote = 'down';
+    return enriched;
+  });
   return {
     type: 'state',
     roomCode: room.code,
@@ -139,7 +150,7 @@ function getRoomState(room, playerId) {
     winners: room.winners,
     hostName: room.players.get(room.hostId)?.name || 'Host',
     allCards: room.gameStarted ? getAllCards(room) : {},
-    chatHistory: room.chatHistory || []
+    chatHistory: chatHistoryWithReactions
   };
 }
 
@@ -344,11 +355,48 @@ wss.on('connection', (ws) => {
         const text = (msg.text || '').trim().slice(0, 300);
         const image = msg.image || null; // base64 data URL
         if (!text && !image) return;
-        const chatMsg = { type: 'chat', name: sender.name, emoji: sender.emoji, text, ts: Date.now() };
+        const msgId = `m${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+        const chatMsg = { type: 'chat', msgId, name: sender.name, emoji: sender.emoji, text, ts: Date.now(), reactions: {} };
         if (image) chatMsg.image = image;
         currentRoom.chatHistory.push(chatMsg);
         if (currentRoom.chatHistory.length > 200) currentRoom.chatHistory.shift();
         broadcast(currentRoom, chatMsg);
+        break;
+      }
+
+      case 'chatReaction': {
+        if (!currentRoom) return;
+        const sender = currentRoom.players.get(playerId);
+        if (!sender) return;
+        const { msgId: targetMsgId, reaction } = msg;
+        if (!targetMsgId || !['up', 'down'].includes(reaction)) return;
+        // Find the message in chat history
+        const chatEntry = currentRoom.chatHistory.find(m => m.msgId === targetMsgId);
+        if (!chatEntry) return;
+        if (!chatEntry.reactions) chatEntry.reactions = {};
+        // Initialize reaction arrays if needed
+        if (!chatEntry.reactions.up) chatEntry.reactions.up = [];
+        if (!chatEntry.reactions.down) chatEntry.reactions.down = [];
+        const opposite = reaction === 'up' ? 'down' : 'up';
+        // Remove from opposite if present
+        chatEntry.reactions[opposite] = chatEntry.reactions[opposite].filter(id => id !== playerId);
+        // Toggle: remove if already reacted with same, otherwise add
+        const idx = chatEntry.reactions[reaction].indexOf(playerId);
+        if (idx >= 0) chatEntry.reactions[reaction].splice(idx, 1);
+        else chatEntry.reactions[reaction].push(playerId);
+        // Broadcast the reaction update
+        broadcast(currentRoom, {
+          type: 'chatReaction', msgId: targetMsgId,
+          reactions: { up: chatEntry.reactions.up.length, down: chatEntry.reactions.down.length },
+          yourVote: null // each client determines their own vote
+        });
+        // Also send to the reactor with their vote
+        const myVote = chatEntry.reactions.up.includes(playerId) ? 'up' : chatEntry.reactions.down.includes(playerId) ? 'down' : null;
+        ws.send(JSON.stringify({
+          type: 'chatReaction', msgId: targetMsgId,
+          reactions: { up: chatEntry.reactions.up.length, down: chatEntry.reactions.down.length },
+          yourVote: myVote
+        }));
         break;
       }
 
