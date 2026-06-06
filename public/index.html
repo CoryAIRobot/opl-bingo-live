@@ -71,12 +71,12 @@ input[type=text]::placeholder{color:#555}
 .status-dot.disconnected{background:#ef4444}
 @keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
 
-#game{padding:10px;gap:0;padding-bottom:20px;overflow:hidden}
+#game{padding:6px 10px;gap:0;padding-bottom:6px;overflow:hidden}
 
 /* Desktop: side-by-side layout */
-.game-layout{display:flex;gap:12px;width:100%;max-width:1100px;align-items:stretch;height:calc(100dvh - 60px)}
-.game-left{flex:1;min-width:0;display:flex;flex-direction:column;align-items:center;justify-content:center;position:relative}
-.game-right{width:300px;flex-shrink:0;display:flex;flex-direction:column;gap:8px;overflow:hidden}
+.game-layout{display:flex;gap:10px;width:100%;max-width:1200px;align-items:stretch;height:calc(100dvh - 50px)}
+.game-left{flex:1;min-width:0;display:flex;flex-direction:column;align-items:center;justify-content:flex-start;position:relative;gap:2px}
+.game-right{width:280px;flex-shrink:0;display:flex;flex-direction:column;gap:8px;overflow:hidden}
 
 /* Side chat panel (always visible on desktop) */
 .side-chat{background:var(--navy-light);border-radius:12px;border:1px solid #333;display:flex;flex-direction:column;flex:1;min-height:0;overflow:hidden}
@@ -122,13 +122,13 @@ input[type=text]::placeholder{color:#555}
   .chat-toggle{display:none !important}
   .scoreboard-toggle{display:none !important}
 }
-.game-header{display:flex;flex-direction:column;gap:8px;width:100%;max-width:900px;padding:4px 0}
+.game-header{display:flex;flex-direction:column;gap:4px;width:100%;max-width:900px;padding:2px 0}
 .game-header-top{display:flex;align-items:center;justify-content:space-between;gap:8px;width:100%}
 .game-header .room-info{font-family:'Oswald',sans-serif;font-size:1rem;color:var(--red-light);letter-spacing:2px}
 .game-header .called-count{font-size:0.8rem;color:#888}
 .reaction-bar.game-reactions{justify-content:flex-start;width:100%;max-width:none;margin-top:0}
-.reaction-bar.game-reactions button{min-width:38px;height:38px;font-size:1.1rem}
-.bingo-board{width:100%;max-width:650px;border-radius:12px;overflow:hidden;border:2px solid var(--red);background:var(--navy-light)}
+.reaction-bar.game-reactions button{min-width:34px;height:34px;font-size:1rem}
+.bingo-board{width:100%;max-width:800px;border-radius:12px;overflow:hidden;border:2px solid var(--red);background:var(--navy-light)}
 .bingo-letters{display:grid;grid-template-columns:repeat(5,minmax(0,1fr))}
 .bingo-letters span{font-family:'Oswald',sans-serif;font-size:1.4rem;font-weight:700;text-align:center;padding:8px 0;background:var(--red);color:#fff}
 .bingo-grid{display:grid;grid-template-columns:repeat(5,minmax(0,1fr))}
@@ -143,14 +143,14 @@ input[type=text]::placeholder{color:#555}
 .cell.free .icon{font-size:1rem}
 .cell.just-called{animation:flash .6s ease}
 @keyframes flash{0%,100%{background:#1a5c1a}50%{background:#33aa33}}
-.call-area{width:100%;max-width:650px;margin-top:2px}
+.call-area{width:100%;max-width:800px;margin-top:2px}
 .call-area p{font-size:0.65rem;color:#555;text-align:center;text-transform:uppercase;letter-spacing:1px}
-.bingo-btn-area{display:flex;justify-content:center;width:100%;max-width:650px;margin-top:6px}
-.bingo-btn{font-family:'Oswald',sans-serif;font-size:1.1rem;letter-spacing:4px;padding:12px 32px;
+.bingo-btn-area{display:flex;justify-content:center;width:100%;max-width:800px;margin-top:4px}
+.bingo-btn{font-family:'Oswald',sans-serif;font-size:1rem;letter-spacing:4px;padding:10px 32px;
   border-radius:12px;background:linear-gradient(135deg,var(--gold),#ffaa00);color:#000;
   box-shadow:0 4px 20px rgba(255,215,0,0.3);transition:transform .1s;font-weight:700;width:100%}
 .bingo-btn:active{transform:scale(0.95)}
-.reaction-bar{display:flex;gap:8px;flex-wrap:wrap;justify-content:center;width:100%;max-width:650px;margin-top:8px}
+.reaction-bar{display:flex;gap:8px;flex-wrap:wrap;justify-content:center;width:100%;max-width:800px;margin-top:4px}
 .reaction-bar button{min-width:42px;height:42px;border-radius:999px;border:1px solid #3a3a3a;background:rgba(255,255,255,0.06);font-size:1.25rem;transition:transform .12s ease, background .12s ease}
 .reaction-bar button:hover,.reaction-bar button:active{transform:scale(1.08);background:rgba(255,255,255,0.12)}
 .reaction-layer{position:fixed;inset:0;pointer-events:none;overflow:hidden;z-index:280}
@@ -224,8 +224,8 @@ input[type=text]::placeholder{color:#555}
   color:#fff;font-size:0.9rem;display:flex;align-items:center;justify-content:center;flex-shrink:0}
 .inline-chat-input .img-btn{width:34px;height:34px}
 
-.host-controls{display:flex;gap:8px;flex-wrap:wrap;justify-content:center;margin-top:4px;width:100%;max-width:650px}
-.non-host-controls{display:flex;gap:8px;justify-content:center;margin-top:4px;width:100%;max-width:650px}
+.host-controls{display:flex;gap:8px;flex-wrap:wrap;justify-content:center;margin-top:4px;width:100%;max-width:800px}
+.non-host-controls{display:flex;gap:8px;justify-content:center;margin-top:4px;width:100%;max-width:800px}
 
 /* Chat */
 .chat-toggle{position:fixed;top:10px;right:62px;z-index:200;width:44px;height:44px;
@@ -284,11 +284,11 @@ input[type=text]::placeholder{color:#555}
 .winner-overlay .winner-sub{color:#aaa;font-size:1rem}
 
 @media(min-width:600px){
-  .cell{font-size:0.78rem;padding:5px;line-height:1.2;aspect-ratio:auto;min-height:60px}
+  .cell{font-size:0.82rem;padding:6px;line-height:1.2;aspect-ratio:auto;min-height:70px}
   .bingo-letters span{font-size:1.8rem;padding:8px 0}
 }
 @media(min-width:900px){
-  .cell{font-size:0.82rem;padding:6px;min-height:65px}
+  .cell{font-size:0.88rem;padding:8px;min-height:80px}
   .bingo-letters span{font-size:2rem}
 }
 </style>
