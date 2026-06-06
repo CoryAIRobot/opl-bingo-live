@@ -76,7 +76,7 @@ input[type=text]::placeholder{color:#555}
 /* Desktop: side-by-side layout */
 .game-layout{display:flex;gap:10px;width:100%;max-width:1200px;align-items:stretch;height:calc(100dvh - 50px)}
 .game-left{flex:1;min-width:0;display:flex;flex-direction:column;align-items:center;justify-content:flex-start;position:relative;gap:2px}
-.game-right{width:280px;flex-shrink:0;display:flex;flex-direction:column;gap:8px;overflow:hidden}
+.game-right{width:280px;flex-shrink:0;display:flex;flex-direction:column;gap:8px;overflow:hidden;max-height:calc(100dvh - 50px)}
 
 /* Side chat panel (always visible on desktop) */
 .side-chat{background:var(--navy-light);border-radius:12px;border:1px solid #333;display:flex;flex-direction:column;flex:1;min-height:0;overflow:hidden}
@@ -99,7 +99,7 @@ input[type=text]::placeholder{color:#555}
   color:#fff;font-size:0.9rem;display:flex;align-items:center;justify-content:center;flex-shrink:0}
 
 /* Side scoreboard (desktop) */
-.side-scoreboard{background:var(--navy-light);border-radius:12px;border:1px solid #333;padding:12px;flex-shrink:0;max-height:35vh;overflow-y:auto}
+.side-scoreboard{background:var(--navy-light);border-radius:12px;border:1px solid #333;padding:12px;flex-shrink:1;min-height:120px;max-height:40%;overflow-y:auto}
 .side-scoreboard .ss-header{font-family:'Oswald',sans-serif;font-size:0.85rem;color:var(--gold);text-transform:uppercase;
   letter-spacing:2px;text-align:center;margin-bottom:10px}
 .side-scoreboard .sb-row{display:flex;align-items:center;gap:8px;padding:8px;border-radius:8px;margin-bottom:4px;background:var(--navy);font-size:0.85rem}
