@@ -884,17 +884,28 @@ function updateChatBadge() {
 function burstReaction(emoji) {
   const layer = document.getElementById('reactionLayer');
   if (!layer) return;
-  const count = window.innerWidth < 640 ? 4 : 6;
-  for (let i = 0; i < count; i++) {
+  const cols = window.innerWidth < 640 ? 2 : 3;
+  const rows = 2;
+  const slots = [];
+  for (let r = 0; r < rows; r++) {
+    for (let c = 0; c < cols; c++) slots.push({ r, c });
+  }
+  for (let i = slots.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [slots[i], slots[j]] = [slots[j], slots[i]];
+  }
+  const x0 = 12, xSpan = 76, y0 = 14, ySpan = 62;
+  const cellW = xSpan / cols, cellH = ySpan / rows;
+  slots.forEach((slot, i) => {
     const el = document.createElement('div');
     el.className = 'floating-reaction';
     el.textContent = emoji;
-    el.style.left = `${12 + Math.random() * 76}%`;
-    el.style.top = `${40 + Math.random() * 42}%`;
+    el.style.left = `${x0 + slot.c * cellW + cellW * (0.22 + Math.random() * 0.56)}%`;
+    el.style.top = `${y0 + slot.r * cellH + cellH * (0.22 + Math.random() * 0.56)}%`;
     el.style.animationDelay = `${i * 70}ms`;
     layer.appendChild(el);
     setTimeout(() => el.remove(), 2900);
-  }
+  });
 }
 
 function escapeHtml(str) {
