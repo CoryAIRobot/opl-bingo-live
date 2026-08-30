@@ -70,20 +70,52 @@ input[type=text]::placeholder{color:#555}
   .or-divider{margin:4px 0}
 }
 
-#waiting{justify-content:flex-start;padding-top:40px;gap:16px;text-align:center}
-.room-code-display{font-family:'Oswald',sans-serif;font-size:3.5rem;letter-spacing:10px;color:var(--gold);text-shadow:0 0 20px rgba(255,215,0,0.3)}
-.room-code-label{font-size:0.85rem;color:#888;text-transform:uppercase;letter-spacing:3px;margin-bottom:4px}
-.share-link{font-size:0.8rem;color:#aaa;word-break:break-all;max-width:340px;cursor:pointer;padding:10px 16px;border-radius:10px;
-  background:var(--navy-light);transition:background .2s;border:1px solid #333}
+#waiting{justify-content:flex-start;align-items:stretch;width:100%;text-align:center;
+  padding:max(16px,env(safe-area-inset-top)) 16px max(12px,env(safe-area-inset-bottom));
+  overflow-x:hidden;overflow-y:auto}
+.wait-layout{display:flex;flex-direction:column;align-items:center;gap:10px;width:100%;max-width:420px;margin:0 auto;flex:1;min-height:0}
+.wait-join,.wait-party{display:flex;flex-direction:column;align-items:center;width:100%}
+.wait-actions{display:flex;flex-direction:column;align-items:center;gap:8px;width:100%}
+.wait-toggles{display:flex;flex-wrap:wrap;justify-content:center;gap:8px}
+.wait-toggles .keep-awake-btn{margin-top:0}
+.room-code-display{font-family:'Oswald',sans-serif;font-size:2.6rem;letter-spacing:8px;color:var(--gold);text-shadow:0 0 20px rgba(255,215,0,0.3);line-height:1.1}
+.room-code-label{font-size:0.8rem;color:#888;text-transform:uppercase;letter-spacing:3px;margin-bottom:2px}
+.share-link{font-size:0.75rem;color:#aaa;word-break:break-all;max-width:340px;cursor:pointer;padding:8px 12px;border-radius:10px;
+  background:var(--navy-light);transition:background .2s;border:1px solid #333;width:100%}
 .share-link:active{background:var(--navy)}
-.player-list{display:flex;flex-wrap:wrap;justify-content:center;gap:10px;margin:16px 0;max-width:400px}
+.player-list{display:flex;flex-wrap:wrap;justify-content:center;gap:8px;margin:8px 0;max-width:100%}
 .player-chip{background:var(--navy-light);border:1px solid #333;border-radius:12px;padding:8px 14px;font-size:0.85rem;display:flex;align-items:center;gap:6px}
 .player-chip .host-badge{font-size:0.65rem;background:var(--gold);color:#000;padding:2px 6px;border-radius:4px;font-weight:700}
-.connecting-msg{color:#888;font-size:0.85rem;margin-top:8px}
+.connecting-msg{color:#888;font-size:0.8rem;margin:0}
 
 /* Waiting room chat */
-.waiting-chat{width:100%;max-width:420px;margin-top:16px;background:var(--navy-light);border-radius:14px;border:1px solid #333;
-  display:flex;flex-direction:column;flex:1;max-height:50vh;overflow:hidden}
+.waiting-chat{width:100%;max-width:420px;margin-top:4px;background:var(--navy-light);border-radius:14px;border:1px solid #333;
+  display:flex;flex-direction:column;flex:1;min-height:140px;max-height:36vh;overflow:hidden}
+
+@media(min-width:768px) and (min-height:620px){
+  #waiting{overflow:hidden;padding-top:max(18px,env(safe-area-inset-top))}
+  .wait-layout{display:grid;grid-template-columns:minmax(240px,300px) minmax(0,1fr);
+    grid-template-rows:auto minmax(0,1fr);max-width:920px;width:100%;
+    height:calc(100dvh - 36px);gap:14px 28px;align-items:stretch}
+  .wait-join{grid-column:1;grid-row:1 / 3;justify-content:center;gap:8px}
+  .wait-party{grid-column:2;grid-row:1;align-items:stretch;text-align:center}
+  .waiting-chat{grid-column:2;grid-row:2;max-width:none;max-height:none;margin-top:0;min-height:0}
+  .room-code-display{font-size:3rem;letter-spacing:10px}
+  .qr-wrap img{width:168px;height:168px}
+  .player-list{margin:10px 0}
+  #waiting #startBtn{width:100%}
+  .waiting-chat .wc-messages{min-height:0}
+}
+
+@media(max-height:520px){
+  #waiting{padding:8px 12px}
+  .wait-layout{gap:6px;max-width:min(920px,96vw)}
+  .room-code-display{font-size:1.8rem;letter-spacing:6px}
+  .qr-wrap{padding:6px}
+  .qr-wrap img{width:96px;height:96px}
+  .qr-caption{display:none !important}
+  .waiting-chat{max-height:28vh;min-height:90px}
+}
 .waiting-chat .wc-messages{flex:1;overflow-y:auto;padding:12px;display:flex;flex-direction:column;gap:6px;min-height:120px}
 .waiting-chat .wc-input-area{padding:10px 12px;border-top:1px solid #333;display:flex;gap:8px;
   padding-bottom:max(10px,env(safe-area-inset-bottom))}
@@ -189,9 +221,9 @@ input[type=text]::placeholder{color:#555}
 .cell.group-called{box-shadow:inset 0 0 0 2px var(--gold);animation:groupPulse 1.6s ease 2}
 .cell.group-called:not(.called){background:#1a2a48}
 @keyframes groupPulse{0%,100%{box-shadow:inset 0 0 0 2px var(--gold)}50%{box-shadow:inset 0 0 0 4px #ffe27a}}
-.qr-wrap{margin:8px auto 4px;padding:10px;background:#fff;border-radius:12px;width:fit-content}
-.qr-wrap img{display:block;width:200px;height:200px}
-.qr-caption{font-size:.7rem;color:#888;margin-top:6px;text-transform:uppercase;letter-spacing:1px}
+.qr-wrap{margin:6px auto 2px;padding:8px;background:#fff;border-radius:12px;width:fit-content}
+.qr-wrap img{display:block;width:148px;height:148px}
+.qr-caption{font-size:.7rem;color:#888;margin-top:4px;text-transform:uppercase;letter-spacing:1px}
 .host-call-hint{font-size:.7rem;color:#888;margin-top:4px}
 .keep-awake-btn.quiet-on{border-color:#7dd3fc;color:#7dd3fc;background:rgba(125,211,252,.08)}
 .cell.free{background:var(--navy);cursor:default;flex-direction:column;gap:2px}
@@ -422,23 +454,31 @@ input[type=text]::placeholder{color:#555}
 
 <!-- WAITING -->
 <div id="waiting" class="screen">
-  <div class="room-code-label">Room Code</div>
-  <div class="room-code-display" id="waitRoomCode">----</div>
-  <div class="qr-wrap" id="qrWrap" style="display:none">
-    <img id="roomQr" alt="Scan to join this room" width="200" height="200">
-  </div>
-  <div class="qr-caption" id="qrCaption" style="display:none">Scan to join</div>
-  <div class="share-link" id="shareLink" onclick="copyLink()">Tap to copy invite link 📋</div>
-  <div class="connecting-msg" id="connectMsg">
-    <span class="status-dot connecting"></span>Connecting...
-  </div>
-  <div class="player-list" id="waitPlayerList"></div>
-  <button class="btn btn-green" id="startBtn" onclick="startGame()" style="display:none">🚔 Start Game</button>
-  <button class="btn btn-sm" onclick="leaveGame()" style="background:rgba(255,255,255,0.08);color:#888;margin-top:12px;">← Leave Room</button>
-  <button type="button" class="keep-awake-btn on" onclick="toggleKeepAwake()">🔆 Keep awake · on</button>
-  <button type="button" class="keep-awake-btn" onclick="toggleQuietMode()" data-quiet>Quiet mode · off</button>
-
-  <div class="waiting-chat" id="waitingChat" style="display:none">
+  <div class="wait-layout">
+    <div class="wait-join">
+      <div class="room-code-label">Room Code</div>
+      <div class="room-code-display" id="waitRoomCode">----</div>
+      <div class="qr-wrap" id="qrWrap" style="display:none">
+        <img id="roomQr" alt="Scan to join this room" width="200" height="200">
+      </div>
+      <div class="qr-caption" id="qrCaption" style="display:none">Scan to join</div>
+      <div class="share-link" id="shareLink" onclick="copyLink()">Tap to copy invite link 📋</div>
+    </div>
+    <div class="wait-party">
+      <div class="connecting-msg" id="connectMsg">
+        <span class="status-dot connecting"></span>Connecting...
+      </div>
+      <div class="player-list" id="waitPlayerList"></div>
+      <button class="btn btn-green" id="startBtn" onclick="startGame()" style="display:none">🚔 Start Game</button>
+      <div class="wait-actions">
+        <button class="btn btn-sm" onclick="leaveGame()" style="background:rgba(255,255,255,0.08);color:#888;">← Leave Room</button>
+        <div class="wait-toggles">
+          <button type="button" class="keep-awake-btn on" onclick="toggleKeepAwake()">🔆 Keep awake · on</button>
+          <button type="button" class="keep-awake-btn" onclick="toggleQuietMode()" data-quiet>Quiet mode · off</button>
+        </div>
+      </div>
+    </div>
+    <div class="waiting-chat" id="waitingChat" style="display:none">
     <div class="wc-label">💬 Chat</div>
     <div class="wc-messages" id="waitChatMessages"></div>
     <div class="wc-input-area">
@@ -446,6 +486,7 @@ input[type=text]::placeholder{color:#555}
       <button class="img-btn" onclick="document.getElementById('waitFileInput').click()">📷</button>
       <input type="file" id="waitFileInput" accept="image/*" style="display:none" onchange="sendImageFromInput(this)">
       <button onclick="sendChat()">➤</button>
+    </div>
     </div>
   </div>
 </div>
