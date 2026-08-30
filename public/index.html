@@ -189,6 +189,19 @@ input[type=text]::placeholder{color:#555}
 .reaction-bar button:hover,.reaction-bar button:active{transform:scale(1.08);background:rgba(255,255,255,0.12)}
 .reaction-layer{position:fixed;inset:0;pointer-events:none;overflow:hidden;z-index:280}
 .floating-reaction{position:absolute;font-size:4.8rem;filter:drop-shadow(0 8px 22px rgba(0,0,0,.5));animation:reaction-pop 2.8s ease-out forwards}
+.floating-chat{position:absolute;left:50%;max-width:min(520px,86vw);background:rgba(10,22,40,.92);border:2px solid var(--gold);
+  border-radius:16px;padding:12px 18px;box-shadow:0 14px 40px rgba(0,0,0,.5);pointer-events:none;text-align:center;
+  animation:chat-float 4.8s ease-in-out forwards;z-index:281}
+.floating-chat.has-img{animation-duration:5.6s}
+.floating-chat .fc-name{font-family:'Oswald',sans-serif;font-size:.85rem;color:var(--red-light);letter-spacing:1px;text-transform:uppercase;margin-bottom:6px}
+.floating-chat .fc-text{font-size:1.35rem;font-weight:700;color:#fff;line-height:1.3;word-break:break-word}
+.floating-chat .fc-img{display:block;max-width:min(420px,78vw);max-height:42vh;border-radius:12px;margin:8px auto 0;object-fit:contain}
+@keyframes chat-float{
+  0%{opacity:0;transform:translate(-120%,-50%) scale(.92)}
+  14%{opacity:1;transform:translate(-50%,-50%) scale(1)}
+  78%{opacity:1;transform:translate(-50%,-50%) scale(1)}
+  100%{opacity:0;transform:translate(90%,-50%) scale(.96)}
+}
 @keyframes reaction-pop{
   0%{transform:translateY(30px) scale(.6) rotate(-10deg);opacity:0}
   12%{opacity:1}
@@ -778,6 +791,7 @@ function sendSideChat() {
 }
 
 function addChatMessage(msg, silent) {
+  if (!silent) floatChat(msg);
   const time = new Date(msg.ts).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
   const imgHtml = msg.image ? `<img class="chat-img" src="${msg.image}" onclick="showFullImage(this.src)">` : '';
   const textHtml = msg.text ? `<div class="chat-text">${escapeHtml(msg.text)}</div>` : '';
@@ -906,6 +920,27 @@ function burstReaction(emoji) {
     layer.appendChild(el);
     setTimeout(() => el.remove(), 2900);
   });
+}
+
+let floatChatLane = 0;
+function floatChat(msg) {
+  const layer = document.getElementById('reactionLayer');
+  if (!layer) return;
+  const text = (msg.text || '').trim();
+  const img = (typeof msg.image === 'string' && msg.image.startsWith('data:image/')) ? msg.image : '';
+  if (!text && !img) return;
+  const el = document.createElement('div');
+  el.className = 'floating-chat' + (img ? ' has-img' : '');
+  const lanes = [34, 50, 66];
+  el.style.top = lanes[floatChatLane % lanes.length] + '%';
+  floatChatLane++;
+  const name = `${msg.emoji || ''} ${escapeHtml(msg.name || 'Player')}`.trim();
+  let html = `<div class="fc-name">${name}</div>`;
+  if (text) html += `<div class="fc-text">${escapeHtml(text)}</div>`;
+  if (img) html += `<img class="fc-img" alt="" src="${img}">`;
+  el.innerHTML = html;
+  layer.appendChild(el);
+  setTimeout(() => el.remove(), img ? 5700 : 4900);
 }
 
 function escapeHtml(str) {
