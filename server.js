@@ -60,7 +60,27 @@ const PHRASES = [
   "Street Racers",
   "Something is on Fire!",
   "Broken down vehicle",
-  "Cigarette smoker"
+  "Cigarette smoker",
+  "Gun found",
+  "Felony stop",
+  "Active warrant",
+  "Field sobriety test",
+  "Crash",
+  "Shirtless dude",
+  "That ain’t mine",
+  "Waffle House call",
+  "Let off with a warning",
+  "Dan drops a pun",
+  "Expired tags",
+  "Open container",
+  "Bystander filming",
+  "Narcan",
+  "Sketchy motel",
+  "It’s my cousin’s car",
+  "Kid in the car",
+  "On probation",
+  "I live right down the road",
+  "Citizen ride-along"
 ];
 
 // ── Helpers ──
