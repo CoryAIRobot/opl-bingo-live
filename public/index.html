@@ -73,46 +73,52 @@ input[type=text]::placeholder{color:#555}
 #waiting{justify-content:flex-start;align-items:stretch;width:100%;text-align:center;
   padding:max(16px,env(safe-area-inset-top)) 16px max(12px,env(safe-area-inset-bottom));
   overflow-x:hidden;overflow-y:auto}
-.wait-layout{display:flex;flex-direction:column;align-items:center;gap:10px;width:100%;max-width:420px;margin:0 auto;flex:1;min-height:0}
-.wait-join,.wait-party{display:flex;flex-direction:column;align-items:center;width:100%}
+.wait-layout{display:flex;flex-direction:column;align-items:stretch;gap:12px;width:100%;max-width:420px;margin:0 auto;flex:1;min-height:0}
+.wait-join,.wait-party{display:flex;flex-direction:column;align-items:center;width:100%;
+  background:var(--navy-light);border:1px solid #333;border-radius:16px;padding:16px 14px}
+.wait-join{gap:8px}
+.wait-party{gap:10px}
 .wait-actions{display:flex;flex-direction:column;align-items:center;gap:8px;width:100%}
 .wait-toggles{display:flex;flex-wrap:wrap;justify-content:center;gap:8px}
 .wait-toggles .keep-awake-btn{margin-top:0}
+.wait-share{display:flex;gap:8px;width:100%;max-width:340px}
 .room-code-display{font-family:'Oswald',sans-serif;font-size:2.6rem;letter-spacing:8px;color:var(--gold);text-shadow:0 0 20px rgba(255,215,0,0.3);line-height:1.1}
 .room-code-label{font-size:0.8rem;color:#888;text-transform:uppercase;letter-spacing:3px;margin-bottom:2px}
-.share-link{font-size:0.75rem;color:#aaa;word-break:break-all;max-width:340px;cursor:pointer;padding:8px 12px;border-radius:10px;
-  background:var(--navy-light);transition:background .2s;border:1px solid #333;width:100%}
-.share-link:active{background:var(--navy)}
-.player-list{display:flex;flex-wrap:wrap;justify-content:center;gap:8px;margin:8px 0;max-width:100%}
-.player-chip{background:var(--navy-light);border:1px solid #333;border-radius:12px;padding:8px 14px;font-size:0.85rem;display:flex;align-items:center;gap:6px}
+.share-link,.share-invite{flex:1;font-size:0.8rem;font-weight:700;color:#ddd;cursor:pointer;padding:10px 12px;border-radius:10px;
+  background:var(--navy);transition:background .2s;border:1px solid #333}
+.share-link:active,.share-invite:active{background:#0a1a33}
+.share-invite{border-color:var(--gold);color:var(--gold);background:rgba(255,215,0,.08)}
+.player-list{display:flex;flex-wrap:wrap;justify-content:center;gap:8px;margin:0;max-width:100%}
+.player-chip{background:var(--navy);border:1px solid #333;border-radius:12px;padding:8px 14px;font-size:0.85rem;display:flex;align-items:center;gap:6px}
 .player-chip .host-badge{font-size:0.65rem;background:var(--gold);color:#000;padding:2px 6px;border-radius:4px;font-weight:700}
 .connecting-msg{color:#888;font-size:0.8rem;margin:0}
 
 /* Waiting room chat */
-.waiting-chat{width:100%;max-width:420px;margin-top:4px;background:var(--navy-light);border-radius:14px;border:1px solid #333;
+.waiting-chat{width:100%;max-width:420px;margin-top:0;background:var(--navy-light);border-radius:16px;border:1px solid #333;
   display:flex;flex-direction:column;flex:1;min-height:140px;max-height:36vh;overflow:hidden}
 
 @media(min-width:768px) and (min-height:620px){
   #waiting{overflow:hidden;padding-top:max(18px,env(safe-area-inset-top))}
-  .wait-layout{display:grid;grid-template-columns:minmax(240px,300px) minmax(0,1fr);
-    grid-template-rows:auto minmax(0,1fr);max-width:920px;width:100%;
-    height:calc(100dvh - 36px);gap:14px 28px;align-items:stretch}
-  .wait-join{grid-column:1;grid-row:1 / 3;justify-content:center;gap:8px}
-  .wait-party{grid-column:2;grid-row:1;align-items:stretch;text-align:center}
-  .waiting-chat{grid-column:2;grid-row:2;max-width:none;max-height:none;margin-top:0;min-height:0}
-  .room-code-display{font-size:3rem;letter-spacing:10px}
-  .qr-wrap img{width:168px;height:168px}
-  .player-list{margin:10px 0}
-  #waiting #startBtn{width:100%}
+  .wait-layout{display:grid;grid-template-columns:minmax(260px,340px) minmax(0,1fr);
+    grid-template-rows:auto minmax(160px,1fr);max-width:980px;width:100%;
+    height:calc(100dvh - 36px);gap:14px;align-items:stretch}
+  .wait-join{grid-column:1;grid-row:1;justify-content:center;gap:8px}
+  .wait-party{grid-column:2;grid-row:1;align-items:center;justify-content:center;text-align:center}
+  .waiting-chat{grid-column:1 / -1;grid-row:2;max-width:none;max-height:none;margin-top:0;min-height:0}
+  .room-code-display{font-size:2.8rem;letter-spacing:10px}
+  .qr-wrap img{width:156px;height:156px}
+  .wait-actions{flex-direction:row;flex-wrap:wrap;justify-content:center}
+  #waiting #startBtn{width:100%;max-width:360px}
   .waiting-chat .wc-messages{min-height:0}
 }
 
 @media(max-height:520px){
   #waiting{padding:8px 12px}
-  .wait-layout{gap:6px;max-width:min(920px,96vw)}
+  .wait-layout{gap:8px;max-width:min(980px,96vw)}
+  .wait-join,.wait-party{padding:10px 12px}
   .room-code-display{font-size:1.8rem;letter-spacing:6px}
   .qr-wrap{padding:6px}
-  .qr-wrap img{width:96px;height:96px}
+  .qr-wrap img{width:88px;height:88px}
   .qr-caption{display:none !important}
   .waiting-chat{max-height:28vh;min-height:90px}
 }
@@ -461,8 +467,11 @@ input[type=text]::placeholder{color:#555}
       <div class="qr-wrap" id="qrWrap" style="display:none">
         <img id="roomQr" alt="Scan to join this room" width="200" height="200">
       </div>
-      <div class="qr-caption" id="qrCaption" style="display:none">Scan to join</div>
-      <div class="share-link" id="shareLink" onclick="copyLink()">Tap to copy invite link 📋</div>
+      <div class="qr-caption" id="qrCaption" style="display:none">Hold this screen up to scan, or share the invite</div>
+      <div class="wait-share">
+        <button type="button" class="share-link" id="shareLink" onclick="copyLink()">Copy link</button>
+        <button type="button" class="share-invite" id="shareInvite" onclick="shareInvite()">Share invite</button>
+      </div>
     </div>
     <div class="wait-party">
       <div class="connecting-msg" id="connectMsg">
@@ -802,13 +811,46 @@ function leaveGame() {
   setTimeout(connect, 500);
 }
 
-function copyLink() {
+function inviteUrl() {
   const code = state.roomCode || document.getElementById('waitRoomCode').textContent;
-  const url = `${location.origin}?room=${code}`;
+  return `${location.origin}?room=${code}`;
+}
+
+function copyLink() {
+  const url = inviteUrl();
   navigator.clipboard.writeText(url).then(() => toast('Link copied! 📋', 'info')).catch(() => {
     const ta = document.createElement('textarea'); ta.value = url; document.body.appendChild(ta);
     ta.select(); document.execCommand('copy'); ta.remove(); toast('Link copied! 📋', 'info');
   });
+}
+
+async function shareInvite() {
+  const code = state.roomCode || document.getElementById('waitRoomCode').textContent;
+  const url = inviteUrl();
+  const img = document.getElementById('roomQr');
+  try {
+    if (img && img.src && navigator.canShare) {
+      const res = await fetch(img.src);
+      const blob = await res.blob();
+      const file = new File([blob], `opl-bingo-${code}.png`, { type: blob.type || 'image/png' });
+      const fileShare = { files: [file], title: `OPL Bingo ${code}`, text: `Join room ${code}: ${url}` };
+      if (navigator.canShare(fileShare)) {
+        await navigator.share(fileShare);
+        return;
+      }
+    }
+  } catch (e) {
+    if (e && e.name === 'AbortError') return;
+  }
+  try {
+    if (navigator.share) {
+      await navigator.share({ title: `OPL Bingo ${code}`, text: `Join my OPL Bingo room ${code}`, url });
+      return;
+    }
+  } catch (e) {
+    if (e && e.name === 'AbortError') return;
+  }
+  copyLink();
 }
 
 function toggleScoreboard() {
@@ -1330,7 +1372,7 @@ function renderViewerGrid(card, markedIndices) {
 function updateShareLink(code) {
   const url = `${location.origin}?room=${code || state.roomCode}`;
   const el = document.getElementById('shareLink');
-  el.textContent = `${url}  📋 Tap to copy`;
+  if (el) el.textContent = 'Copy link';
   const img = document.getElementById('roomQr');
   const wrap = document.getElementById('qrWrap');
   const cap = document.getElementById('qrCaption');
