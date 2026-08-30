@@ -191,7 +191,7 @@ input[type=text]::placeholder{color:#555}
   .reaction-bar.game-reactions button{height:32px;min-height:32px;font-size:0.85rem}
   .reaction-toggle{height:34px;font-size:.85rem}
   .cell{aspect-ratio:1;min-height:80px;font-size:0.88rem;padding:8px}
-  .bingo-btn-area{position:static;padding:4px 0 0;background:transparent}
+  .game-actions{position:static;padding:4px 0 0;background:transparent}
 }
 /* Phone landscape / short screens: never use the desktop sidebar */
 @media(max-height:520px){
@@ -239,11 +239,14 @@ input[type=text]::placeholder{color:#555}
 @keyframes flash{0%,100%{background:#1a5c1a}50%{background:#33aa33}}
 .call-area{width:100%;max-width:800px;margin-top:2px}
 .call-area p{font-size:0.65rem;color:#555;text-align:center;text-transform:uppercase;letter-spacing:1px}
-.bingo-btn-area{display:flex;justify-content:center;width:100%;max-width:800px;margin-top:4px;position:sticky;bottom:0;z-index:8;padding:6px 0 max(10px,env(safe-area-inset-bottom));background:linear-gradient(to top,var(--bg) 65%,transparent)}
-.bingo-btn{font-family:'Oswald',sans-serif;font-size:1rem;letter-spacing:4px;padding:10px 32px;
-  border-radius:12px;background:linear-gradient(135deg,var(--gold),#ffaa00);color:#000;
-  box-shadow:0 4px 20px rgba(255,215,0,0.3);transition:transform .1s;font-weight:700;width:100%}
+.game-actions{display:flex;flex-wrap:wrap;justify-content:center;align-items:center;gap:8px;width:100%;max-width:800px;margin-top:4px;position:sticky;bottom:0;z-index:8;padding:6px 4px max(10px,env(safe-area-inset-bottom));background:linear-gradient(to top,var(--bg) 65%,transparent)}
+.game-actions .btn,.game-actions .bingo-btn,.game-actions .keep-awake-btn{width:auto;flex:0 0 auto;min-height:42px;margin-top:0;border-radius:10px}
+.bingo-btn{font-family:'Oswald',sans-serif;font-size:.9rem;letter-spacing:2px;padding:10px 16px;
+  border-radius:10px;background:linear-gradient(135deg,var(--gold),#ffaa00);color:#000;
+  box-shadow:0 4px 16px rgba(255,215,0,0.28);transition:transform .1s;font-weight:700}
 .bingo-btn:active{transform:scale(0.95)}
+.game-actions .btn-sm{padding:10px 14px;font-size:.8rem}
+.game-actions .keep-awake-btn{padding:10px 14px}
 .reaction-bar{display:flex;gap:8px;flex-wrap:wrap;justify-content:center;width:100%;max-width:800px;margin-top:4px}
 .reaction-bar button{min-width:42px;height:42px;border-radius:999px;border:1px solid #3a3a3a;background:rgba(255,255,255,0.06);font-size:1.25rem;transition:transform .12s ease, background .12s ease}
 .reaction-bar button:hover,.reaction-bar button:active{transform:scale(1.08);background:rgba(255,255,255,0.12)}
@@ -331,8 +334,7 @@ input[type=text]::placeholder{color:#555}
   color:#fff;font-size:0.9rem;display:flex;align-items:center;justify-content:center;flex-shrink:0}
 .inline-chat-input .img-btn{width:34px;height:34px}
 
-.host-controls{display:flex;gap:8px;flex-wrap:wrap;justify-content:center;margin-top:4px;width:100%;max-width:800px}
-.non-host-controls{display:flex;gap:8px;justify-content:center;margin-top:4px;width:100%;max-width:800px}
+.host-controls,.non-host-controls{display:contents}
 
 /* Chat */
 .chat-toggle{position:fixed;top:max(10px,env(safe-area-inset-top));right:max(62px,calc(52px + env(safe-area-inset-right)));z-index:200;width:44px;height:44px;
@@ -411,7 +413,7 @@ input[type=text]::placeholder{color:#555}
 @media(min-width:600px){
   .cell{padding:6px;line-height:1.15;min-height:clamp(56px,10vw,76px);font-size:clamp(0.68rem,1.7vw,0.86rem)}
   .bingo-letters span{font-size:1.8rem;padding:8px 0}
-  .inline-chat,.bingo-board,.call-area,.bingo-btn-area{max-width:800px}
+  .inline-chat,.bingo-board,.call-area,.game-actions{max-width:800px}
 }
 @media(min-width:900px){
   .bingo-letters span{font-size:2rem}
@@ -575,19 +577,18 @@ input[type=text]::placeholder{color:#555}
         </div>
       </div>
 
-      <div class="bingo-btn-area">
+      <div class="game-actions" id="gameActions">
         <button class="bingo-btn" onclick="claimBingo()">🎉 BINGO!</button>
+        <div class="host-controls" id="hostControls" style="display:none">
+          <button class="btn btn-red btn-sm" onclick="resetGame()">🔄 New Round</button>
+          <button class="btn btn-sm" onclick="leaveGame()" style="background:rgba(255,255,255,0.08);color:#888;">← Leave</button>
+        </div>
+        <div class="non-host-controls" id="nonHostControls" style="display:none">
+          <button class="btn btn-sm" onclick="leaveGame()" style="background:rgba(255,255,255,0.08);color:#888;">← Leave</button>
+        </div>
+        <button type="button" class="keep-awake-btn on" onclick="toggleKeepAwake()">🔆 Keep awake · on</button>
+        <button type="button" class="keep-awake-btn" onclick="toggleQuietMode()" data-quiet>Quiet mode · off</button>
       </div>
-
-      <div class="host-controls" id="hostControls" style="display:none">
-        <button class="btn btn-red btn-sm" onclick="resetGame()">🔄 New Round</button>
-        <button class="btn btn-sm" onclick="leaveGame()" style="background:rgba(255,255,255,0.08);color:#888;">← Leave</button>
-      </div>
-      <div class="non-host-controls" id="nonHostControls" style="display:none">
-        <button class="btn btn-sm" onclick="leaveGame()" style="background:rgba(255,255,255,0.08);color:#888;">← Leave Game</button>
-      </div>
-      <button type="button" class="keep-awake-btn on" onclick="toggleKeepAwake()">🔆 Keep awake · on</button>
-  <button type="button" class="keep-awake-btn" onclick="toggleQuietMode()" data-quiet>Quiet mode · off</button>
     </div>
 
     <!-- Right: Live Chat + Scoreboard (desktop) -->
@@ -1196,8 +1197,8 @@ function handleMessage(msg) {
         renderScoreboard(msg.scoreboard);
         refreshCardViewer();
         document.getElementById('gameRoomInfo').textContent = `🚨 ${msg.roomCode}`;
-        if (msg.isHost) { document.getElementById('hostControls').style.display = 'flex'; document.getElementById('nonHostControls').style.display = 'none'; document.getElementById('hostCallHint').style.display = 'block'; }
-        else { document.getElementById('hostControls').style.display = 'none'; document.getElementById('nonHostControls').style.display = 'flex'; document.getElementById('hostCallHint').style.display = 'none'; }
+        if (msg.isHost) { document.getElementById('hostControls').style.display = 'contents'; document.getElementById('nonHostControls').style.display = 'none'; document.getElementById('hostCallHint').style.display = 'block'; }
+        else { document.getElementById('hostControls').style.display = 'none'; document.getElementById('nonHostControls').style.display = 'contents'; document.getElementById('hostCallHint').style.display = 'none'; }
       } else {
         showScreen('waiting');
         myMarkedIndices = new Set();
