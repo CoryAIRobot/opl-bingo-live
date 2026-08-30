@@ -4,6 +4,14 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>🚔 OPL Bingo Live</title>
+<meta name="theme-color" content="#0d1117">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="OPL Bingo">
+<link rel="manifest" href="/manifest.json">
+<link rel="apple-touch-icon" href="/icon-180.png">
+<link rel="icon" type="image/png" sizes="192x192" href="/icon-192.png">
 <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@400;600;700&family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
 <style>
 :root {
@@ -336,6 +344,11 @@ input[type=text]::placeholder{color:#555}
 .toast{position:fixed;top:max(20px,env(safe-area-inset-top));left:50%;transform:translateX(-50%);z-index:300;
   padding:12px 24px;border-radius:12px;font-weight:700;font-size:0.9rem;
   animation:slideDown .3s ease;pointer-events:none;max-width:90vw;text-align:center}
+.keep-awake-btn{margin-top:8px;padding:8px 14px;border-radius:999px;border:1px solid #333;background:var(--navy-light);
+  color:#aaa;font-size:.8rem;font-weight:700;letter-spacing:.4px}
+.keep-awake-btn.on{border-color:var(--gold);color:var(--gold);background:rgba(255,215,0,.08)}
+.install-hint{font-size:.75rem;color:#888;max-width:380px;line-height:1.35;padding:0 12px}
+.install-hint.hidden{display:none}
 .toast.info{background:var(--blue);color:#fff;border:1px solid #333}
 .toast.success{background:#166534;color:#fff;border:1px solid var(--green)}
 .toast.error{background:#7f1d1d;color:#fff;border:1px solid #dc2626}
@@ -365,6 +378,8 @@ input[type=text]::placeholder{color:#555}
 <div id="lobby" class="screen active">
   <div class="logo">🚨 OPL BINGO 🚨</div>
   <div class="tagline">On Patrol: Live — Multiplayer Bingo</div>
+  <button type="button" class="keep-awake-btn on" onclick="toggleKeepAwake()">🔆 Keep awake · on</button>
+  <p class="install-hint" id="installHint">On iPhone/iPad: tap Share, then Add to Home Screen so it opens like an app.</p>
   <div class="lobby-box">
     <h3>🚔 Your Name</h3>
     <div class="input-group">
@@ -407,6 +422,7 @@ input[type=text]::placeholder{color:#555}
   <div class="player-list" id="waitPlayerList"></div>
   <button class="btn btn-green" id="startBtn" onclick="startGame()" style="display:none">🚔 Start Game</button>
   <button class="btn btn-sm" onclick="leaveGame()" style="background:rgba(255,255,255,0.08);color:#888;margin-top:12px;">← Leave Room</button>
+  <button type="button" class="keep-awake-btn on" onclick="toggleKeepAwake()">🔆 Keep awake · on</button>
 
   <div class="waiting-chat" id="waitingChat" style="display:none">
     <div class="wc-label">💬 Chat</div>
@@ -505,6 +521,7 @@ input[type=text]::placeholder{color:#555}
       <div class="non-host-controls" id="nonHostControls" style="display:none">
         <button class="btn btn-sm" onclick="leaveGame()" style="background:rgba(255,255,255,0.08);color:#888;">← Leave Game</button>
       </div>
+      <button type="button" class="keep-awake-btn on" onclick="toggleKeepAwake()">🔆 Keep awake · on</button>
     </div>
 
     <!-- Right: Live Chat + Scoreboard (desktop) -->
@@ -1167,6 +1184,7 @@ function handleMessage(msg) {
 function showScreen(id) {
   document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
   document.getElementById(id).classList.add('active');
+  applyWakeLock();
 }
 
 function renderWaitingPlayers(scoreboard) {
@@ -1294,6 +1312,47 @@ setInterval(() => {
     ws.send(JSON.stringify({ type: 'ping' }));
   }
 }, 25000);
+
+let keepAwakeOn = true;
+try { if (localStorage.getItem('opl_keepawake') === '0') keepAwakeOn = false; } catch (e) {}
+let wakeLock = null;
+function syncKeepAwakeButtons() {
+  document.querySelectorAll('.keep-awake-btn').forEach(btn => {
+    btn.classList.toggle('on', keepAwakeOn);
+    btn.textContent = keepAwakeOn ? '🔆 Keep awake · on' : 'Keep awake · off';
+  });
+}
+async function applyWakeLock() {
+  syncKeepAwakeButtons();
+  if (!keepAwakeOn) {
+    if (wakeLock) { try { await wakeLock.release(); } catch (e) {} wakeLock = null; }
+    return;
+  }
+  if (!('wakeLock' in navigator) || document.visibilityState !== 'visible') return;
+  try {
+    wakeLock = await navigator.wakeLock.request('screen');
+    wakeLock.addEventListener('release', () => { wakeLock = null; });
+  } catch (e) {}
+}
+function toggleKeepAwake() {
+  keepAwakeOn = !keepAwakeOn;
+  try { localStorage.setItem('opl_keepawake', keepAwakeOn ? '1' : '0'); } catch (e) {}
+  applyWakeLock();
+  if (keepAwakeOn && !('wakeLock' in navigator)) {
+    toast('This browser cannot keep the screen on. Add to Home Screen and try iOS 18+/Chrome.', 'info');
+  }
+}
+document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') applyWakeLock(); });
+document.addEventListener('click', () => { if (keepAwakeOn && !wakeLock) applyWakeLock(); }, { passive: true });
+syncKeepAwakeButtons();
+applyWakeLock();
+if (window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone) {
+  const hint = document.getElementById('installHint');
+  if (hint) hint.classList.add('hidden');
+}
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('/sw.js').catch(() => {});
+}
 
 // Enter key
 document.getElementById('playerName').addEventListener('keydown', e => {

@@ -186,7 +186,8 @@ const server = http.createServer((req, res) => {
   const ext = path.extname(filePath);
   const types = {
     '.html': 'text/html', '.js': 'text/javascript', '.css': 'text/css',
-    '.png': 'image/png', '.ico': 'image/x-icon', '.json': 'application/json'
+    '.png': 'image/png', '.ico': 'image/x-icon', '.json': 'application/json',
+    '.webmanifest': 'application/manifest+json', '.svg': 'image/svg+xml'
   };
 
   fs.readFile(filePath, (err, data) => {
