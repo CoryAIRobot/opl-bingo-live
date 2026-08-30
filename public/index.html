@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>🚔 OPL Bingo Live</title>
 <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@400;600;700&family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
 <style>
@@ -59,7 +59,7 @@ input[type=text]::placeholder{color:#555}
 .waiting-chat .wc-input-area{padding:10px 12px;border-top:1px solid #333;display:flex;gap:8px;
   padding-bottom:max(10px,env(safe-area-inset-bottom))}
 .waiting-chat .wc-input-area input{flex:1;padding:10px 14px;border-radius:10px;border:2px solid #333;background:var(--navy);
-  color:#fff;font-size:0.9rem;outline:none}
+  color:#fff;font-size:16px;outline:none}
 .waiting-chat .wc-input-area input:focus{border-color:var(--red)}
 .waiting-chat .wc-input-area button{width:42px;height:42px;border-radius:10px;background:linear-gradient(135deg,var(--red),var(--red-light));
   color:#fff;font-size:1.1rem;display:flex;align-items:center;justify-content:center;flex-shrink:0}
@@ -71,12 +71,12 @@ input[type=text]::placeholder{color:#555}
 .status-dot.disconnected{background:#ef4444}
 @keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
 
-#game{padding:6px 10px;gap:0;padding-bottom:6px;overflow:hidden}
+#game{padding:6px 10px;gap:0;padding-top:max(6px,env(safe-area-inset-top));padding-bottom:max(6px,env(safe-area-inset-bottom));overflow-x:hidden;overflow-y:auto;-webkit-overflow-scrolling:touch}
 
-/* Desktop: side-by-side layout */
-.game-layout{display:flex;gap:10px;width:100%;max-width:1200px;align-items:stretch;height:calc(100dvh - 50px)}
-.game-left{flex:1;min-width:0;display:flex;flex-direction:column;align-items:center;justify-content:flex-start;position:relative;gap:2px}
-.game-right{width:280px;flex-shrink:0;display:flex;flex-direction:column;gap:8px;overflow:hidden;max-height:calc(100dvh - 50px)}
+/* Phone + tablet default: stacked board, chat/scoreboard as drawers */
+.game-layout{display:flex;flex-direction:column;align-items:center;gap:10px;width:100%;max-width:1200px;height:auto}
+.game-left{flex:1;min-width:0;width:100%;max-width:800px;display:flex;flex-direction:column;align-items:center;justify-content:flex-start;position:relative;gap:2px;padding-bottom:8px}
+.game-right{display:none;width:280px;flex-shrink:0;flex-direction:column;gap:8px;overflow:hidden;max-height:calc(100dvh - 50px)}
 
 /* Side chat panel (always visible on desktop) */
 .side-chat{background:var(--navy-light);border-radius:12px;border:1px solid #333;display:flex;flex-direction:column;flex:1;min-height:0;max-height:45%;overflow:hidden}
@@ -93,7 +93,7 @@ input[type=text]::placeholder{color:#555}
 .side-chat .sc-msg.sc-system .sc-bubble{background:transparent;text-align:center;color:#555;font-size:0.65rem;font-style:italic;max-width:100%}
 .side-chat .sc-input{padding:8px;border-top:1px solid #333;display:flex;gap:6px}
 .side-chat .sc-input input{flex:1;padding:8px 10px;border-radius:8px;border:1.5px solid #333;background:var(--navy);
-  color:#fff;font-size:0.8rem;outline:none;min-width:0}
+  color:#fff;font-size:16px;outline:none;min-width:0}
 .side-chat .sc-input input:focus{border-color:var(--red)}
 .side-chat .sc-input button{width:34px;height:34px;border-radius:8px;background:linear-gradient(135deg,var(--red),var(--red-light));
   color:#fff;font-size:0.9rem;display:flex;align-items:center;justify-content:center;flex-shrink:0}
@@ -110,32 +110,45 @@ input[type=text]::placeholder{color:#555}
 .side-scoreboard .sb-row.winner{border:1px solid var(--gold);background:rgba(255,215,0,0.05)}
 .side-scoreboard .sb-row.winner .name::after{content:' 🏆'}
 
-/* Mobile: hide side panel, keep inline chat */
-@media(max-width:740px){
-  .game-layout{flex-direction:column;align-items:center;height:auto}
-  .game-left{max-width:500px;width:100%;padding-bottom:20px}
-  .game-right{display:none}
-  .inline-chat{display:flex !important}
-}
-@media(min-width:741px){
+/* Desktop: sidebar only when there's real width AND height */
+@media(min-width:1024px) and (min-height:700px){
+  #game{overflow:hidden;padding-top:6px;padding-bottom:6px}
+  .game-layout{flex-direction:row;align-items:stretch;height:calc(100dvh - 50px)}
+  .game-left{max-width:none;padding-bottom:0}
+  .game-right{display:flex}
   .inline-chat{display:none !important}
   .chat-toggle{display:none !important}
   .scoreboard-toggle{display:none !important}
+  .game-header-top{padding-right:0}
+  .reaction-bar.game-reactions{grid-template-columns:repeat(18,1fr);gap:2px}
+  .reaction-bar.game-reactions button{height:32px;min-height:32px;font-size:0.85rem}
+  .cell{aspect-ratio:1;min-height:80px;font-size:0.88rem;padding:8px}
+  .bingo-btn-area{position:static;padding:4px 0 0;background:transparent}
+}
+/* Phone landscape / short screens: never use the desktop sidebar */
+@media(max-height:520px){
+  #game{overflow-x:hidden;overflow-y:auto}
+  .game-layout{flex-direction:column;height:auto}
+  .game-right{display:none !important}
+  .inline-chat{display:flex !important;flex-direction:column}
+  .chat-toggle,.scoreboard-toggle{display:flex !important}
+  .cell{aspect-ratio:auto;min-height:40px}
 }
 .game-header{display:flex;flex-direction:column;gap:4px;width:100%;max-width:800px;padding:2px 0;margin:0 auto}
-.game-header-top{display:flex;align-items:center;justify-content:space-between;gap:8px;width:100%}
+.game-header-top{display:flex;align-items:center;justify-content:space-between;gap:8px;width:100%;padding-right:96px}
 .game-header .room-info{font-family:'Oswald',sans-serif;font-size:1rem;color:var(--red-light);letter-spacing:2px}
 .game-header .called-count{font-size:0.8rem;color:#888}
-.reaction-bar.game-reactions{display:grid;grid-template-columns:repeat(18,1fr);width:100%;max-width:800px;margin:0 auto 6px;gap:2px;justify-items:center}
-.reaction-bar.game-reactions button{min-width:0;width:100%;height:28px;font-size:0.85rem;padding:0}
+.reaction-bar.game-reactions{display:grid;grid-template-columns:repeat(9,1fr);width:100%;max-width:800px;margin:0 auto 6px;gap:4px;justify-items:center}
+.reaction-bar.game-reactions button{min-width:0;width:100%;height:44px;min-height:44px;font-size:1.15rem;padding:0}
 .bingo-board{width:100%;max-width:800px;border-radius:12px;overflow:hidden;border:2px solid var(--red);background:var(--navy-light)}
 .bingo-letters{display:grid;grid-template-columns:repeat(5,minmax(0,1fr))}
 .bingo-letters span{font-family:'Oswald',sans-serif;font-size:1.4rem;font-weight:700;text-align:center;padding:8px 0;background:var(--red);color:#fff}
 .bingo-grid{display:grid;grid-template-columns:repeat(5,minmax(0,1fr))}
-.cell{aspect-ratio:1;display:flex;align-items:center;justify-content:center;text-align:center;
-  padding:4px;font-size:0.7rem;font-weight:700;line-height:1.2;text-transform:uppercase;
+.cell{aspect-ratio:auto;display:flex;align-items:center;justify-content:center;text-align:center;
+  padding:4px;font-size:clamp(0.52rem,2.6vw,0.82rem);font-weight:700;line-height:1.15;text-transform:uppercase;
   color:#ccc;background:var(--blue);border:1px solid rgba(255,255,255,0.06);
-  position:relative;cursor:pointer;transition:all .2s;user-select:none;word-break:break-word;overflow:hidden;min-width:0}
+  position:relative;cursor:pointer;transition:all .2s;user-select:none;word-break:break-word;overflow:hidden;min-width:0;
+  min-height:clamp(48px,12vw,72px)}
 .cell.called{background:#1a5c1a;color:#fff}
 .cell.called::after{content:'✓';position:absolute;top:2px;right:3px;font-size:0.65rem;color:var(--green)}
 .cell.free{background:var(--navy);cursor:default;flex-direction:column;gap:2px}
@@ -145,7 +158,7 @@ input[type=text]::placeholder{color:#555}
 @keyframes flash{0%,100%{background:#1a5c1a}50%{background:#33aa33}}
 .call-area{width:100%;max-width:800px;margin-top:2px}
 .call-area p{font-size:0.65rem;color:#555;text-align:center;text-transform:uppercase;letter-spacing:1px}
-.bingo-btn-area{display:flex;justify-content:center;width:100%;max-width:800px;margin-top:4px}
+.bingo-btn-area{display:flex;justify-content:center;width:100%;max-width:800px;margin-top:4px;position:sticky;bottom:0;z-index:8;padding:6px 0 max(10px,env(safe-area-inset-bottom));background:linear-gradient(to top,var(--bg) 65%,transparent)}
 .bingo-btn{font-family:'Oswald',sans-serif;font-size:1rem;letter-spacing:4px;padding:10px 32px;
   border-radius:12px;background:linear-gradient(135deg,var(--gold),#ffaa00);color:#000;
   box-shadow:0 4px 20px rgba(255,215,0,0.3);transition:transform .1s;font-weight:700;width:100%}
@@ -163,11 +176,11 @@ input[type=text]::placeholder{color:#555}
   65%{transform:translateY(-18px) scale(1.06) rotate(6deg)}
   100%{transform:translateY(-42px) scale(.92) rotate(-4deg);opacity:0}
 }
-.scoreboard-toggle{position:fixed;top:10px;right:10px;z-index:200;width:44px;height:44px;
+.scoreboard-toggle{position:fixed;top:max(10px,env(safe-area-inset-top));right:max(10px,env(safe-area-inset-right));z-index:200;width:44px;height:44px;
   border-radius:12px;background:var(--navy-light);border:1px solid #333;font-size:1.2rem;
   display:flex;align-items:center;justify-content:center}
-.scoreboard-panel{position:fixed;top:0;right:-320px;width:300px;height:100dvh;background:var(--navy);
-  border-left:2px solid #333;z-index:190;transition:right .3s ease;padding:60px 16px 20px;overflow-y:auto}
+.scoreboard-panel{position:fixed;top:0;right:-320px;width:min(300px,100%);height:100dvh;background:var(--navy);
+  border-left:2px solid #333;z-index:190;transition:right .3s ease;padding:max(60px,calc(env(safe-area-inset-top) + 48px)) 16px max(20px,env(safe-area-inset-bottom));overflow-y:auto}
 .scoreboard-panel.open{right:0}
 .scoreboard-panel h3{font-family:'Oswald',sans-serif;font-size:1.2rem;letter-spacing:2px;color:var(--gold);text-transform:uppercase;margin-bottom:16px}
 .sb-row{display:flex;align-items:center;gap:10px;padding:10px;border-radius:10px;margin-bottom:6px;background:var(--navy-light);cursor:pointer;transition:background .15s}
@@ -207,7 +220,7 @@ input[type=text]::placeholder{color:#555}
 .called-log .log-chip{font-size:0.65rem;padding:4px 8px;background:var(--navy-light);border-radius:6px;color:#aaa;border:1px solid #333}
 .called-log .log-chip .by{color:#666;font-style:italic}
 /* Inline chat on game screen */
-.inline-chat{width:100%;max-width:500px;margin-top:6px;background:var(--navy-light);border-radius:12px;border:1px solid #333;overflow:visible}
+.inline-chat{display:flex;flex-direction:column;width:100%;max-width:500px;margin-top:6px;background:var(--navy-light);border-radius:12px;border:1px solid #333;overflow:visible}
 .inline-chat-last{padding:6px 10px;min-height:32px;display:flex;align-items:center;cursor:pointer;transition:background .15s;
   border-bottom:1px solid rgba(255,255,255,0.05);overflow:hidden}
 .inline-chat-last:active{background:var(--navy)}
@@ -218,7 +231,7 @@ input[type=text]::placeholder{color:#555}
 .inline-chat-last .inline-chat-expand{font-size:0.6rem;color:#555;margin-left:8px;text-transform:uppercase;letter-spacing:1px;flex-shrink:0}
 .inline-chat-input{display:flex;gap:4px;padding:6px 8px;width:100%;box-sizing:border-box}
 .inline-chat-input input{flex:1;padding:8px 10px;border-radius:8px;border:1.5px solid #333;background:var(--navy);
-  color:#fff;font-size:0.85rem;outline:none;min-width:0}
+  color:#fff;font-size:16px;outline:none;min-width:0}
 .inline-chat-input input:focus{border-color:var(--red)}
 .inline-chat-input button{width:34px;height:34px;border-radius:8px;background:linear-gradient(135deg,var(--red),var(--red-light));
   color:#fff;font-size:0.9rem;display:flex;align-items:center;justify-content:center;flex-shrink:0}
@@ -228,17 +241,17 @@ input[type=text]::placeholder{color:#555}
 .non-host-controls{display:flex;gap:8px;justify-content:center;margin-top:4px;width:100%;max-width:800px}
 
 /* Chat */
-.chat-toggle{position:fixed;top:10px;right:62px;z-index:200;width:44px;height:44px;
+.chat-toggle{position:fixed;top:max(10px,env(safe-area-inset-top));right:max(62px,calc(52px + env(safe-area-inset-right)));z-index:200;width:44px;height:44px;
   border-radius:12px;background:var(--navy-light);border:1px solid #333;font-size:1.2rem;
-  display:flex;align-items:center;justify-content:center;position:fixed}
+  display:flex;align-items:center;justify-content:center}
 .chat-badge{position:absolute;top:-4px;right:-4px;width:18px;height:18px;border-radius:50%;
   background:var(--red);color:#fff;font-size:0.6rem;font-weight:700;display:none;
   align-items:center;justify-content:center}
 .chat-badge.show{display:flex}
 .chat-backdrop{position:fixed;inset:0;background:rgba(0,0,0,0.45);z-index:194;display:none}
 .chat-backdrop.open{display:block}
-.chat-panel{position:fixed;top:0;right:-340px;width:320px;height:100dvh;background:var(--navy);
-  border-left:2px solid #333;z-index:195;transition:right .3s ease;display:flex;flex-direction:column}
+.chat-panel{position:fixed;top:0;right:-340px;width:min(320px,100%);height:100dvh;background:var(--navy);
+  border-left:2px solid #333;z-index:195;transition:right .3s ease;display:flex;flex-direction:column;padding-top:env(safe-area-inset-top)}
 .chat-panel.open{right:0}
 .chat-header{padding:14px 16px;border-bottom:1px solid #333;display:flex;align-items:center;justify-content:space-between}
 .chat-header h3{font-family:'Oswald',sans-serif;font-size:1.1rem;letter-spacing:2px;color:var(--red-light);text-transform:uppercase;margin:0}
@@ -256,7 +269,7 @@ input[type=text]::placeholder{color:#555}
 .chat-input-area{padding:10px 12px;border-top:1px solid #333;display:flex;gap:8px;
   padding-bottom:max(10px,env(safe-area-inset-bottom))}
 .chat-input-area input{flex:1;padding:10px 14px;border-radius:10px;border:2px solid #333;background:var(--navy-light);
-  color:#fff;font-size:0.9rem;outline:none;min-width:0}
+  color:#fff;font-size:16px;outline:none;min-width:0}
 .chat-input-area input:focus{border-color:var(--red)}
 .chat-input-area button{width:42px;height:42px;border-radius:10px;background:linear-gradient(135deg,var(--red),var(--red-light));
   color:#fff;font-size:1.1rem;display:flex;align-items:center;justify-content:center;flex-shrink:0}
@@ -280,7 +293,7 @@ input[type=text]::placeholder{color:#555}
 .sc-reactions button:active{transform:scale(0.92)}
 .sc-reactions button.voted{border-color:var(--gold);background:rgba(255,215,0,0.1);color:var(--gold)}
 
-.toast{position:fixed;top:20px;left:50%;transform:translateX(-50%);z-index:300;
+.toast{position:fixed;top:max(20px,env(safe-area-inset-top));left:50%;transform:translateX(-50%);z-index:300;
   padding:12px 24px;border-radius:12px;font-weight:700;font-size:0.9rem;
   animation:slideDown .3s ease;pointer-events:none;max-width:90vw;text-align:center}
 .toast.info{background:var(--blue);color:#fff;border:1px solid #333}
@@ -297,11 +310,11 @@ input[type=text]::placeholder{color:#555}
 .winner-overlay .winner-sub{color:#aaa;font-size:1rem}
 
 @media(min-width:600px){
-  .cell{font-size:0.82rem;padding:6px;line-height:1.2;aspect-ratio:auto;min-height:70px}
+  .cell{padding:6px;line-height:1.15;min-height:clamp(56px,10vw,76px);font-size:clamp(0.68rem,1.7vw,0.86rem)}
   .bingo-letters span{font-size:1.8rem;padding:8px 0}
+  .inline-chat,.bingo-board,.call-area,.bingo-btn-area{max-width:800px}
 }
 @media(min-width:900px){
-  .cell{font-size:0.88rem;padding:8px;min-height:80px}
   .bingo-letters span{font-size:2rem}
 }
 </style>
