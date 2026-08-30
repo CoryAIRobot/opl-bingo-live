@@ -186,6 +186,14 @@ input[type=text]::placeholder{color:#555}
   min-height:clamp(48px,12vw,72px)}
 .cell.called{background:#1a5c1a;color:#fff}
 .cell.called::after{content:'✓';position:absolute;top:2px;right:3px;font-size:0.65rem;color:var(--green)}
+.cell.group-called{box-shadow:inset 0 0 0 2px var(--gold);animation:groupPulse 1.6s ease 2}
+.cell.group-called:not(.called){background:#1a2a48}
+@keyframes groupPulse{0%,100%{box-shadow:inset 0 0 0 2px var(--gold)}50%{box-shadow:inset 0 0 0 4px #ffe27a}}
+.qr-wrap{margin:8px auto 4px;padding:10px;background:#fff;border-radius:12px;width:fit-content}
+.qr-wrap img{display:block;width:200px;height:200px}
+.qr-caption{font-size:.7rem;color:#888;margin-top:6px;text-transform:uppercase;letter-spacing:1px}
+.host-call-hint{font-size:.7rem;color:#888;margin-top:4px}
+.keep-awake-btn.quiet-on{border-color:#7dd3fc;color:#7dd3fc;background:rgba(125,211,252,.08)}
 .cell.free{background:var(--navy);cursor:default;flex-direction:column;gap:2px}
 .cell.free .badge{background:var(--red);color:#fff;padding:2px 8px;border-radius:4px;font-family:'Oswald',sans-serif;font-size:0.7rem;letter-spacing:2px}
 .cell.free .icon{font-size:1rem}
@@ -379,6 +387,7 @@ input[type=text]::placeholder{color:#555}
   <div class="logo">🚨 OPL BINGO 🚨</div>
   <div class="tagline">On Patrol: Live — Multiplayer Bingo</div>
   <button type="button" class="keep-awake-btn on" onclick="toggleKeepAwake()">🔆 Keep awake · on</button>
+  <button type="button" class="keep-awake-btn" onclick="toggleQuietMode()" data-quiet>Quiet mode · off</button>
   <p class="install-hint" id="installHint">On iPhone/iPad: tap Share, then Add to Home Screen so it opens like an app.</p>
   <div class="lobby-box">
     <h3>🚔 Your Name</h3>
@@ -415,6 +424,10 @@ input[type=text]::placeholder{color:#555}
 <div id="waiting" class="screen">
   <div class="room-code-label">Room Code</div>
   <div class="room-code-display" id="waitRoomCode">----</div>
+  <div class="qr-wrap" id="qrWrap" style="display:none">
+    <img id="roomQr" alt="Scan to join this room" width="200" height="200">
+  </div>
+  <div class="qr-caption" id="qrCaption" style="display:none">Scan to join</div>
   <div class="share-link" id="shareLink" onclick="copyLink()">Tap to copy invite link 📋</div>
   <div class="connecting-msg" id="connectMsg">
     <span class="status-dot connecting"></span>Connecting...
@@ -423,6 +436,7 @@ input[type=text]::placeholder{color:#555}
   <button class="btn btn-green" id="startBtn" onclick="startGame()" style="display:none">🚔 Start Game</button>
   <button class="btn btn-sm" onclick="leaveGame()" style="background:rgba(255,255,255,0.08);color:#888;margin-top:12px;">← Leave Room</button>
   <button type="button" class="keep-awake-btn on" onclick="toggleKeepAwake()">🔆 Keep awake · on</button>
+  <button type="button" class="keep-awake-btn" onclick="toggleQuietMode()" data-quiet>Quiet mode · off</button>
 
   <div class="waiting-chat" id="waitingChat" style="display:none">
     <div class="wc-label">💬 Chat</div>
@@ -495,6 +509,7 @@ input[type=text]::placeholder{color:#555}
       </div>
       <div class="call-area">
         <p>Tap a square when you hear it on the show!</p>
+        <p class="host-call-hint" id="hostCallHint" style="display:none">Host: tap a square to call it for the room (gold outline). Players still mark their own cards.</p>
       </div>
 
       <!-- Inline chat (mobile only) -->
@@ -522,6 +537,7 @@ input[type=text]::placeholder{color:#555}
         <button class="btn btn-sm" onclick="leaveGame()" style="background:rgba(255,255,255,0.08);color:#888;">← Leave Game</button>
       </div>
       <button type="button" class="keep-awake-btn on" onclick="toggleKeepAwake()">🔆 Keep awake · on</button>
+  <button type="button" class="keep-awake-btn" onclick="toggleQuietMode()" data-quiet>Quiet mode · off</button>
     </div>
 
     <!-- Right: Live Chat + Scoreboard (desktop) -->
@@ -930,6 +946,7 @@ function updateChatBadge() {
 }
 
 function burstReaction(emoji) {
+  if (quietOn) return;
   const layer = document.getElementById('reactionLayer');
   if (!layer) return;
   const cols = window.innerWidth < 640 ? 2 : 3;
@@ -958,6 +975,7 @@ function burstReaction(emoji) {
 
 let floatChatLane = 0;
 function floatChat(msg) {
+  if (quietOn) return;
   const layer = document.getElementById('reactionLayer');
   if (!layer) return;
   const text = (msg.text || '').trim();
@@ -1095,8 +1113,8 @@ function handleMessage(msg) {
         renderScoreboard(msg.scoreboard);
         refreshCardViewer();
         document.getElementById('gameRoomInfo').textContent = `🚨 ${msg.roomCode}`;
-        if (msg.isHost) { document.getElementById('hostControls').style.display = 'flex'; document.getElementById('nonHostControls').style.display = 'none'; }
-        else { document.getElementById('hostControls').style.display = 'none'; document.getElementById('nonHostControls').style.display = 'flex'; }
+        if (msg.isHost) { document.getElementById('hostControls').style.display = 'flex'; document.getElementById('nonHostControls').style.display = 'none'; document.getElementById('hostCallHint').style.display = 'block'; }
+        else { document.getElementById('hostControls').style.display = 'none'; document.getElementById('nonHostControls').style.display = 'flex'; document.getElementById('hostCallHint').style.display = 'none'; }
       } else {
         showScreen('waiting');
         myMarkedIndices = new Set();
@@ -1144,13 +1162,19 @@ function handleMessage(msg) {
 
     case 'playerMarked':
       if (msg.allCards) allCards = msg.allCards;
+      if (msg.calledPhrases) state.calledPhrases = msg.calledPhrases;
       renderScoreboard(msg.scoreboard);
       refreshCardViewer();
-      // Notify everyone including the active user
-      { const phrase = allCards[msg.playerId]?.card?.[msg.index] || '???';
-        const action = msg.marked ? 'marked' : 'unmarked';
-        toast(`${msg.emoji} ${msg.name} ${action} "${phrase}"`, 'info');
-        if (navigator.vibrate) navigator.vibrate(30);
+      if (document.getElementById('game').classList.contains('active')) renderBoard();
+      {
+        const phrase = msg.phrase || allCards[msg.playerId]?.card?.[msg.index] || '???';
+        if (msg.hostCall && msg.marked) {
+          if (!quietOn) toast(`Host called: ${phrase}`, 'info');
+        } else if (!quietOn) {
+          const action = msg.marked ? 'marked' : 'unmarked';
+          toast(`${msg.emoji} ${msg.name} ${action} "${phrase}"`, 'info');
+        }
+        if (navigator.vibrate && !quietOn) navigator.vibrate(30);
       }
       break;
 
@@ -1200,7 +1224,8 @@ function renderBoard(justMarkedIndex) {
     if (phrase === '__FREE__') return `<div class="cell free"><span class="icon">🚔</span><span class="badge">FREE</span></div>`;
     const isMarked = myMarkedIndices.has(i);
     const justCalled = justMarkedIndex === i;
-    return `<div class="cell${isMarked ? ' called' : ''}${justCalled ? ' just-called' : ''}" onclick="markSquare(${i})">${phrase}</div>`;
+    const groupCalled = (state.calledPhrases || []).includes(phrase);
+    return `<div class="cell${isMarked ? ' called' : ''}${justCalled ? ' just-called' : ''}${groupCalled ? ' group-called' : ''}" onclick="markSquare(${i})">${phrase}</div>`;
   }).join('');
   document.getElementById('calledCount').textContent = `${myMarkedIndices.size} marked`;
 }
@@ -1265,6 +1290,14 @@ function updateShareLink(code) {
   const url = `${location.origin}?room=${code || state.roomCode}`;
   const el = document.getElementById('shareLink');
   el.textContent = `${url}  📋 Tap to copy`;
+  const img = document.getElementById('roomQr');
+  const wrap = document.getElementById('qrWrap');
+  const cap = document.getElementById('qrCaption');
+  if (img && url) {
+    img.src = 'https://api.qrserver.com/v1/create-qr-code/?size=220x220&margin=8&data=' + encodeURIComponent(url);
+    if (wrap) wrap.style.display = 'block';
+    if (cap) cap.style.display = 'block';
+  }
 }
 
 function toast(text, type = 'info') {
@@ -1315,9 +1348,22 @@ setInterval(() => {
 
 let keepAwakeOn = true;
 try { if (localStorage.getItem('opl_keepawake') === '0') keepAwakeOn = false; } catch (e) {}
+let quietOn = false;
+try { if (localStorage.getItem('opl_quiet') === '1') quietOn = true; } catch (e) {}
+function syncQuietButtons() {
+  document.querySelectorAll('[data-quiet]').forEach(btn => {
+    btn.classList.toggle('quiet-on', quietOn);
+    btn.textContent = quietOn ? 'Quiet mode · on' : 'Quiet mode · off';
+  });
+}
+function toggleQuietMode() {
+  quietOn = !quietOn;
+  try { localStorage.setItem('opl_quiet', quietOn ? '1' : '0'); } catch (e) {}
+  syncQuietButtons();
+}
 let wakeLock = null;
 function syncKeepAwakeButtons() {
-  document.querySelectorAll('.keep-awake-btn').forEach(btn => {
+  document.querySelectorAll('.keep-awake-btn:not([data-quiet])').forEach(btn => {
     btn.classList.toggle('on', keepAwakeOn);
     btn.textContent = keepAwakeOn ? '🔆 Keep awake · on' : 'Keep awake · off';
   });
@@ -1345,6 +1391,7 @@ function toggleKeepAwake() {
 document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') applyWakeLock(); });
 document.addEventListener('click', () => { if (keepAwakeOn && !wakeLock) applyWakeLock(); }, { passive: true });
 syncKeepAwakeButtons();
+syncQuietButtons();
 applyWakeLock();
 if (window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone) {
   const hint = document.getElementById('installHint');

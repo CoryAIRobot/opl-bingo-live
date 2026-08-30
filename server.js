@@ -170,7 +170,8 @@ function getRoomState(room, playerId) {
     winners: room.winners,
     hostName: room.players.get(room.hostId)?.name || 'Host',
     allCards: room.gameStarted ? getAllCards(room) : {},
-    chatHistory: chatHistoryWithReactions
+    chatHistory: chatHistoryWithReactions,
+    calledPhrases: [...(room.calledPhrases || [])]
   };
 }
 
@@ -226,6 +227,7 @@ wss.on('connection', (ws) => {
           players: new Map(),
           gameStarted: false, winners: [],
           chatHistory: [],
+          calledPhrases: new Set(),
           createdAt: Date.now()
         };
         const card = makeCard();
@@ -310,6 +312,13 @@ wss.on('connection', (ws) => {
         const wasMarked = player.markedIndices.has(index);
         if (wasMarked) player.markedIndices.delete(index);
         else player.markedIndices.add(index);
+        const phrase = player.card && player.card[index];
+        const isHost = currentRoom.hostId === playerId;
+        if (isHost && phrase && phrase !== '__FREE__') {
+          if (!currentRoom.calledPhrases) currentRoom.calledPhrases = new Set();
+          if (!wasMarked) currentRoom.calledPhrases.add(phrase);
+          else currentRoom.calledPhrases.delete(phrase);
+        }
         // Notify everyone of updated scoreboard + cards
         broadcast(currentRoom, {
           type: 'playerMarked',
@@ -318,6 +327,9 @@ wss.on('connection', (ws) => {
           emoji: player.emoji,
           index,
           marked: !wasMarked,
+          phrase,
+          hostCall: isHost,
+          calledPhrases: [...(currentRoom.calledPhrases || [])],
           scoreboard: getScoreboard(currentRoom),
           allCards: getAllCards(currentRoom)
         });
@@ -348,6 +360,7 @@ wss.on('connection', (ws) => {
         if (!currentRoom || currentRoom.hostId !== playerId) return;
         currentRoom.gameStarted = true;
         currentRoom.winners = [];
+        currentRoom.calledPhrases = new Set();
         for (const [pid, p] of currentRoom.players) { p.card = makeCard(); p.hasBingo = false; p.markedIndices = new Set(); }
         for (const [pid, p] of currentRoom.players) {
           if (p.ws && p.ws.readyState === 1) p.ws.send(JSON.stringify(getRoomState(currentRoom, pid)));
@@ -361,6 +374,7 @@ wss.on('connection', (ws) => {
         if (!currentRoom || currentRoom.hostId !== playerId) return;
         currentRoom.gameStarted = true;
         currentRoom.winners = [];
+        currentRoom.calledPhrases = new Set();
         for (const [pid, p] of currentRoom.players) { p.card = makeCard(); p.hasBingo = false; p.markedIndices = new Set(); }
         for (const [pid, p] of currentRoom.players) {
           if (p.ws && p.ws.readyState === 1) p.ws.send(JSON.stringify(getRoomState(currentRoom, pid)));
