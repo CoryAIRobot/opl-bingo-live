@@ -143,6 +143,7 @@ input[type=text]::placeholder{color:#555}
   .game-header-top{padding-right:0}
   .reaction-bar.game-reactions{grid-template-columns:repeat(18,1fr);gap:2px}
   .reaction-bar.game-reactions button{height:32px;min-height:32px;font-size:0.85rem}
+  .reaction-toggle{height:34px;font-size:.85rem}
   .cell{aspect-ratio:1;min-height:80px;font-size:0.88rem;padding:8px}
   .bingo-btn-area{position:static;padding:4px 0 0;background:transparent}
 }
@@ -159,7 +160,12 @@ input[type=text]::placeholder{color:#555}
 .game-header-top{display:flex;align-items:center;justify-content:space-between;gap:8px;width:100%;padding-right:96px}
 .game-header .room-info{font-family:'Oswald',sans-serif;font-size:1rem;color:var(--red-light);letter-spacing:2px}
 .game-header .called-count{font-size:0.8rem;color:#888}
-.reaction-bar.game-reactions{display:grid;grid-template-columns:repeat(9,1fr);width:100%;max-width:800px;margin:0 auto 6px;gap:4px;justify-items:center}
+.reaction-wrap{width:100%;max-width:800px;margin:0 auto 6px}
+.reaction-toggle{width:100%;height:40px;border-radius:10px;border:1px solid #333;background:var(--navy-light);color:#ddd;
+  font-family:'Oswald',sans-serif;font-size:.95rem;letter-spacing:1.5px;text-transform:uppercase}
+.reaction-toggle:active{transform:scale(.98)}
+.reaction-bar.game-reactions{display:none;grid-template-columns:repeat(9,1fr);width:100%;margin-top:6px;gap:4px;justify-items:center}
+.reaction-wrap.open .reaction-bar.game-reactions{display:grid}
 .reaction-bar.game-reactions button{min-width:0;width:100%;height:44px;min-height:44px;font-size:1.15rem;padding:0}
 .bingo-board{width:100%;max-width:800px;border-radius:12px;overflow:hidden;border:2px solid var(--red);background:var(--navy-light)}
 .bingo-letters{display:grid;grid-template-columns:repeat(5,minmax(0,1fr))}
@@ -426,6 +432,8 @@ input[type=text]::placeholder{color:#555}
   <div class="game-layout">
     <!-- Left: Bingo Board -->
     <div class="game-left">
+      <div class="reaction-wrap" id="reactionWrap">
+      <button type="button" class="reaction-toggle" id="reactionToggle" onclick="toggleReactions()" aria-expanded="false">😀 Reactions ▾</button>
       <div class="reaction-bar game-reactions" id="reactionBar">
       <button onclick="sendReaction('😀')" title="Smile">😀</button>
       <button onclick="sendReaction('😂')" title="Laugh">😂</button>
@@ -463,7 +471,8 @@ input[type=text]::placeholder{color:#555}
       <button onclick="sendReaction('🤯')" title="Mind Blown">🤯</button>
       <button onclick="sendReaction('🐊')" title="Florida">🐊</button>
       <button onclick="sendReaction('🔥')" title="Fire">🔥</button>
-    </div>
+      </div>
+      </div>
       <div class="bingo-board">
         <div class="bingo-letters"><span>B</span><span>I</span><span>N</span><span>G</span><span>O</span></div>
         <div class="bingo-grid" id="bingoGrid"></div>
@@ -685,6 +694,14 @@ function joinRoom() {
   showScreen('waiting');
   document.getElementById('waitRoomCode').textContent = code;
   document.getElementById('connectMsg').innerHTML = '<span class="status-dot connecting"></span>Joining room...';
+}
+
+function toggleReactions() {
+  const wrap = document.getElementById('reactionWrap');
+  const btn = document.getElementById('reactionToggle');
+  const open = wrap.classList.toggle('open');
+  btn.setAttribute('aria-expanded', open ? 'true' : 'false');
+  btn.textContent = open ? '😀 Reactions ▴' : '😀 Reactions ▾';
 }
 
 function sendReaction(emoji) {
